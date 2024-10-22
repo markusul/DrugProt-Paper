@@ -2,9 +2,9 @@ prepAggData <- function(path = "data/aggData_diff.RData"){
   load(path)
   load("data/protNames.RData")
   
-  perturbations <- unique(agg_data$pertLabel[agg_data$type == 'drugCombination'])
+  perturbations <- unique(agg_data_diff$pertLabel[agg_data_diff$type == 'drugCombination'])
   
-  dat <- agg_data
+  dat <- agg_data_diff
   p_names <- c(prot_names_6, prot_names_24, prot_names_48)
   
   X <- dat[, p_names]
