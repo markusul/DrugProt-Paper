@@ -1,4 +1,6 @@
 /data
+/slurm
+/outfiles
 
 # History files
 .Rhistory

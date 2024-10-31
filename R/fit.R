@@ -27,13 +27,13 @@ for(group in Groups){
 envs <- as.factor(envs)
 
 start <- Sys.time()
-fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 50, mc.cores = 100)
+fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 10, mc.cores = 100)
 fit_sdf <- toList(fit_sdf)
 end <- Sys.time()
 print(paste0("Training time SDF: ", end - start))
 
 start <- Sys.time()
-fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 50, mc.cores = 100,
+fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 10, mc.cores = 100,
                     Q_type = "no_deconfounding")
 fit_plain <- toList(fit_plain)
 end <- Sys.time()
