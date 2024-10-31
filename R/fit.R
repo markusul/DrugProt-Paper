@@ -5,7 +5,7 @@ source("R/utils.R")
 dat <- prepAggData()
 X <- as.matrix(dat$X)
 Y <- dat$Y
-A <- dat$A
+A <- as.matrix(dat$A)
 p_names <- dat$p_names
 perturbations <- dat$perturbations
 pertLabel <- dat$pertLabel
@@ -45,4 +45,10 @@ save(fit_plain, fitle = "results/fit_plain.Rdata")
 print(paste0("Training time PLAIN: ", end - start))
 
 
-
+start <- Sys.time()
+fit_anchor <- SDForest(x = X, y = Y, A = A, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100,
+                      Q_type = "no_deconfounding", gamma = 12)
+fit_anchor <- toList(fit_anchor)
+end <- Sys.time()
+save(fit_anchor, fitle = "results/fit_anchor.Rdata")
+print(paste0("Training time ANCHOR: ", end - start))
