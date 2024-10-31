@@ -33,13 +33,16 @@ start <- Sys.time()
 fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100)
 fit_sdf <- toList(fit_sdf)
 end <- Sys.time()
+save(fit_sdf, fitle = "results/fit_sdf.Rdata")
 print(paste0("Training time SDF: ", end - start))
 
 start <- Sys.time()
-fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 10, mc.cores = 100,
+fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100,
                     Q_type = "no_deconfounding")
 fit_plain <- toList(fit_plain)
 end <- Sys.time()
+save(fit_plain, fitle = "results/fit_plain.Rdata")
 print(paste0("Training time PLAIN: ", end - start))
 
-save(fit_sdf, fit_plain, fitle = "results/fits.Rdata")
+
+
