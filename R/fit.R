@@ -25,9 +25,12 @@ for(group in Groups){
   envs[which(pertLabel %in% test_pert)] <- group
 }
 envs <- as.factor(envs)
+trees_envs <- rep(50, length(levels(envs)))
+names(trees_envs) <- levels(envs)
+trees_envs['0'] <- 0
 
 start <- Sys.time()
-fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = 10, mc.cores = 100)
+fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100)
 fit_sdf <- toList(fit_sdf)
 end <- Sys.time()
 print(paste0("Training time SDF: ", end - start))
