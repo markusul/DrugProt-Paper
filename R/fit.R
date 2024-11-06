@@ -29,26 +29,26 @@ trees_envs <- rep(50, length(levels(envs)))
 names(trees_envs) <- levels(envs)
 trees_envs['0'] <- 0
 
-start <- Sys.time()
-fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100)
-fit_sdf <- toList(fit_sdf)
-end <- Sys.time()
-save(fit_sdf, fitle = "results/fit_sdf.Rdata")
-print(paste0("Training time SDF: ", end - start))
+#start <- Sys.time()
+#fit_sdf <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100)
+#fit_sdf <- toList(fit_sdf)
+#end <- Sys.time()
+#save(fit_sdf, file = "results/fit_sdf.Rdata")
+#print(paste0("Training time SDF: ", end - start))
 
 start <- Sys.time()
-fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100,
+fit_plain <- SDForest(x = X, y = Y, envs = envs, nTree_leave_out = trees_envs, mc.cores = 20,
                     Q_type = "no_deconfounding")
 fit_plain <- toList(fit_plain)
 end <- Sys.time()
-save(fit_plain, fitle = "results/fit_plain.Rdata")
+save(fit_plain, file = "results/fit_plain.Rdata")
 print(paste0("Training time PLAIN: ", end - start))
 
 
 start <- Sys.time()
-fit_anchor <- SDForest(x = X, y = Y, A = A, envs = envs, nTree_leave_out = trees_envs, mc.cores = 100,
+fit_anchor <- SDForest(x = X, y = Y, A = A, envs = envs, nTree_leave_out = trees_envs, mc.cores = 20,
                       Q_type = "no_deconfounding", gamma = 12)
 fit_anchor <- toList(fit_anchor)
 end <- Sys.time()
-save(fit_anchor, fitle = "results/fit_anchor.Rdata")
+save(fit_anchor, file = "results/fit_anchor.Rdata")
 print(paste0("Training time ANCHOR: ", end - start))
