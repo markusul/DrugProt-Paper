@@ -124,8 +124,6 @@ length(unique(comb_data$pertLabel)) - 63
 
 
 table(unlist(data[, pert_names]))
-dev.off()
-
 names(data)
 
 
@@ -138,7 +136,12 @@ grid()
 plot(data[data$type == "drugCombination", c("drug_#53", "drug_#64")])
 grid()
 
+library(ggplot2)
 ggplot(data, aes(x = `drug_#53`, y = `drug_#64`)) + 
     geom_point() + theme_bw() + 
     xlab("concentration of drug 53") +
+    ylab(expression(paste(mu, "mol of drug 64")))
+  
+  
+  
     ylab("concentration of drug 64")
