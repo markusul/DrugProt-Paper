@@ -28,6 +28,8 @@ na_count <- na_count / nrow(data_protein)
 hist(na_count, breaks = 100)
 max(na_count)
 
+mean(is.na(data_protein))
+
 save(na_count, file = 'data/na_count.RData')
 
 hist(log(apply(data_protein, 2, function(x) quantile(x, 0.2, na.rm = T))), breaks = 100)

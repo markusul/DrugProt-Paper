@@ -3,6 +3,7 @@ library(SDForest)
 load("data/prepData.RData")
 load("data/protNames.RData")
 
+
 head(data)
 
 X <- data[, prot_names]
@@ -20,7 +21,7 @@ umap_res$pertLabel <- data$pertLabel
 
 
 library(ggplot2)
-ggumap1 <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) + 
+ggumap <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) + 
     geom_point(size = 0.5) + theme_bw() + 
     theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
@@ -30,13 +31,11 @@ ggumap1 <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) +
         axis.ticks.y=element_blank()) +
     ggtitle("UMAP of Protein Expression Data")
 
+ggumap
 ggsave("figures/umap.png", ggumap, width = 10, height = 6)
 
 
-
 umap_0 <- umap(X[data$pert_time == 0, ], n_neighbors = 50, min_dist = 0.5)
-
-#plot UMAP
 umap_0 <- data.frame(umap_0$layout)
 umap_0$IC50 <- data$IC50[data$pert_time == 0]
 umap_0$protein_plate <- data$protein_plate[data$pert_time == 0]
@@ -50,15 +49,12 @@ ggumap0 <- ggplot(umap_0, aes(x = X1, y = X2, color = protein_plate)) +
         axis.ticks.x=element_blank()) + 
     theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
-    ggtitle("UMAP of Protein Expression Data at 0 hours")
-
+        axis.ticks.y=element_blank())
 ggumap0
+ggsave("figures/umap0.png", ggumap0, width = 5, height = 4)
 
 
 umap_6 <- umap(X[data$pert_time == 6, ], n_neighbors = 50, min_dist = 0.5)
-
-#plot UMAP
 umap_6 <- data.frame(umap_6$layout)
 umap_6$IC50 <- data$IC50[data$pert_time == 6]
 umap_6$protein_plate <- data$protein_plate[data$pert_time == 6]
@@ -66,13 +62,83 @@ umap_6$pert_time <- as.factor(data$pert_time[data$pert_time == 6])
 umap_6$pertLabel <- data$pertLabel[data$pert_time == 6]
 
 ggumap6 <- ggplot(umap_6, aes(x = X1, y = X2, color = IC50)) + 
-    geom_point(size = 0.5) + theme_bw() + 
+    geom_point(size = 0.1) + theme_bw() + 
     theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()) + 
     theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
-        axis.ticks.y=element_blank()) +
-    ggtitle("UMAP of Protein Expression Data at 6 hours")
-
+        axis.ticks.y=element_blank())
 ggumap6
+ggsave("figures/umap6.png", ggumap6, width = 5, height = 4)
+
+umap_24 <- umap(X[data$pert_time == 24, ], n_neighbors = 50, min_dist = 0.5)
+umap_24 <- data.frame(umap_24$layout)
+umap_24$IC50 <- data$IC50[data$pert_time == 24]
+umap_24$protein_plate <- data$protein_plate[data$pert_time == 24]
+umap_24$pert_time <- as.factor(data$pert_time[data$pert_time == 24])
+umap_24$pertLabel <- data$pertLabel[data$pert_time == 24]
+
+ggumap24 <- ggplot(umap_24, aes(x = X1, y = X2, color = IC50)) + 
+    geom_point(size = 0.1) + theme_bw() + 
+    theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+    theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+ggumap24
+ggsave("figures/umap24.png", ggumap24, width = 5, height = 4)
+
+
+umap_48 <- umap(X[data$pert_time == 48, ], n_neighbors = 50, min_dist = 0.5)
+umap_48 <- data.frame(umap_48$layout)
+umap_48$IC50 <- data$IC50[data$pert_time == 48]
+umap_48$protein_plate <- data$protein_plate[data$pert_time == 48]
+umap_48$pert_time <- as.factor(data$pert_time[data$pert_time == 48])
+umap_48$pertLabel <- data$pertLabel[data$pert_time == 48]
+
+ggumap48 <- ggplot(umap_48, aes(x = X1, y = X2, color = IC50)) + 
+    geom_point(size = 0.1) + theme_bw() + 
+    theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+    theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+ggumap48
+ggsave("figures/umap48.png", ggumap48, width = 5, height = 4)
+
+
+
+load("data/aggData.RData")
+
+# number of protein plates
+length(unique(agg_data$protein_plate))
+
+load("data/combData.RData")
+names(comb_data)
+
+#number of drug combinations
+length(unique(comb_data$pertLabel)) - 63
+
+
+table(unlist(data[, pert_names]))
+dev.off()
+
+names(data)
+
+
+sort(table(comb_data$pertLabel))
+
+plot(data[data$type == "drugCombination", c("drug_#72", "drug_#64")])
+grid()
+
+
+plot(data[data$type == "drugCombination", c("drug_#53", "drug_#64")])
+grid()
+
+ggplot(data, aes(x = `drug_#53`, y = `drug_#64`)) + 
+    geom_point() + theme_bw() + 
+    xlab("concentration of drug 53") +
+    ylab("concentration of drug 64")
