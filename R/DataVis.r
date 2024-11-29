@@ -1,15 +1,13 @@
 library(SDForest)
+library(ggplot2)
+library(umap)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
 
 
-head(data)
-
+# Visualization of Protein expression
 X <- data[, prot_names]
-
-#make UMAP
-library(umap)
 umap_res <- umap(X, n_neighbors = 50, min_dist = 0.5)
 
 #plot UMAP
@@ -19,8 +17,6 @@ umap_res$protein_plate <- data$protein_plate
 umap_res$pert_time <- as.factor(data$pert_time)
 umap_res$pertLabel <- data$pertLabel
 
-
-library(ggplot2)
 ggumap <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) + 
     geom_point(size = 0.5) + theme_bw() + 
     theme(axis.title.x=element_blank(),
@@ -110,38 +106,42 @@ ggumap48
 ggsave("figures/umap48.png", ggumap48, width = 5, height = 4)
 
 
-
+# Information about data
 load("data/aggData.RData")
+load("data/combData.RData")
 
 # number of protein plates
 length(unique(agg_data$protein_plate))
 
-load("data/combData.RData")
-names(comb_data)
-
 #number of drug combinations
 length(unique(comb_data$pertLabel)) - 63
 
-
+#concentrations of different drugs
 table(unlist(data[, pert_names]))
-names(data)
+
+#number of experiments with a given drug
+sort(table(data$pertLabel))
+
+#example of concentrations in drug combinations
+gg_conc <- ggplot(data, aes(x = `drug_#20`, y = `drug_#32`)) + 
+  geom_point(size = 0.7) + theme_bw() + 
+  xlab(expression(paste(mu, "mol Olaparib"))) +
+  ylab(expression(paste(mu, "mol Lapatinib Ditosylate Hydrate")))
+gg_conc
+
+ggsave('figures/conc.png', gg_conc, width = 4, height = 3)
+
+#variation of IC50
+length(unique(data$IC50))
+length(unique(comb_data$pertLabel)) * 18
+dim(unique(data[, c('pertLabel', 'protein_plate')]))
+
+gg_IC50 <- ggplot(data, aes(x = type, y = IC50)) + 
+  geom_violin() + theme_bw() + geom_boxplot(width = 0.07, size = 0.5)
+gg_IC50
+
+ggsave('figures/IC50.png', gg_IC50, width = 4, height = 3)
 
 
-sort(table(comb_data$pertLabel))
-
-plot(data[data$type == "drugCombination", c("drug_#72", "drug_#64")])
-grid()
-
-
-plot(data[data$type == "drugCombination", c("drug_#53", "drug_#64")])
-grid()
-
-library(ggplot2)
-ggplot(data, aes(x = `drug_#53`, y = `drug_#64`)) + 
-    geom_point() + theme_bw() + 
-    xlab("concentration of drug 53") +
-    ylab(expression(paste(mu, "mol of drug 64")))
-  
-  
-  
-    ylab("concentration of drug 64")
+#number of proteins
+length(prot_names)
