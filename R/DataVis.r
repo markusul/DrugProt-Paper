@@ -1,10 +1,12 @@
 library(SDForest)
 library(ggplot2)
 library(umap)
+library(tidyr)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
-
+load("data/aggData.RData")
+load("data/combData.RData")
 
 # Visualization of Protein expression
 X <- data[, prot_names]
@@ -105,11 +107,6 @@ ggumap48 <- ggplot(umap_48, aes(x = X1, y = X2, color = IC50)) +
 ggumap48
 ggsave("figures/umap48.png", ggumap48, width = 5, height = 4)
 
-
-# Information about data
-load("data/aggData.RData")
-load("data/combData.RData")
-
 # number of protein plates
 length(unique(agg_data$protein_plate))
 
@@ -145,3 +142,65 @@ ggsave('figures/IC50.png', gg_IC50, width = 4, height = 3)
 
 #number of proteins
 length(prot_names)
+tail(names(data), 100)
+
+cdat <- data[data$type == 'drugCombination', c('IC50', 'pertLabel')]
+cdat <- cdat[!is.na(cdat$IC50), ]
+cdat$pertLabel
+
+dAB <- matrix(unlist(strsplit(cdat[, 'pertLabel'], " ")), ncol = 2, byrow = T)
+
+res <- apply(dAB, 1, function(ab){
+  c(Anchor = mean(data$IC50[data$pertLabel == ab[1]], na.rm = T),
+    Library = mean(data$IC50[data$pertLabel == ab[2]], na.rm = T))
+})
+
+cdat$type <- 'Combination'
+cdat <- cdat[, c('IC50', 'type')]
+cdat$label <- 1:nrow(cdat)
+cdat <- rbind(cdat, data.frame(IC50 = res['Anchor', ], type = 'Anchor', label = 1:ncol(res)))
+cdat <- rbind(cdat, data.frame(IC50 = res['Library', ], type = 'Library', label = 1:ncol(res)))
+
+gg_comb <- ggplot(cdat, aes(x = type, y = IC50, group = label)) + 
+  geom_line(linewidth = 0.01) + theme_bw() + 
+  xlab(element_blank())
+ggsave("figures/comb.png", gg_comb, width = 6, height = 4)
+
+nP <- 1
+randP <- sample(1:length(prot_names), nP)
+pdat <- agg_data[, c(prot_names_0[randP], 'protein_plate', 'pertLabel')]
+names(pdat)[1:nP] <- paste0('P', 1:nP)
+pdat <- gather(pdat, key = "protein", value = "expression", -protein_plate, -pertLabel)
+pdat$time <- 0
+
+pdat6 <- agg_data[, c(prot_names_6[randP], 'protein_plate', 'pertLabel')]
+names(pdat6)[1:nP] <- paste0('P', 1:nP)
+pdat6 <- gather(pdat6, key = "protein", value = "expression", -protein_plate, -pertLabel)
+pdat6$time <- 6
+
+pdat24 <- agg_data[, c(prot_names_24[randP], 'protein_plate', 'pertLabel')]
+names(pdat24)[1:nP] <- paste0('P', 1:nP)
+pdat24 <- gather(pdat24, key = "protein", value = "expression", -protein_plate, -pertLabel)
+pdat24$time <- 24
+
+pdat48 <- agg_data[, c(prot_names_48[randP], 'protein_plate', 'pertLabel')]
+names(pdat48)[1:nP] <- paste0('P', 1:nP)
+pdat48 <- gather(pdat48, key = "protein", value = "expression", -protein_plate, -pertLabel)
+pdat48$time <- 48
+
+pdat <- rbind(pdat, pdat6, pdat24, pdat48)
+
+
+ggplot(pdat, aes(y = expression, x = time, group = interaction(protein, pertLabel, protein_plate))) + 
+  geom_line(aes(color = pertLabel)) + theme_bw()
+
+#plot mean per protein per timepoint in pdat
+library(dplyr)
+
+pdat_mean <- pdat %>% group_by(protein, time, pertLabel) %>% summarise(mean = mean(expression, na.rm = T))
+ggplot(pdat_mean, aes(x = time, y = mean, group = interaction(protein, pertLabel))) + 
+  geom_line()
+
+
+
+
