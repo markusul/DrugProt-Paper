@@ -2,6 +2,7 @@ library(SDForest)
 library(ggplot2)
 library(umap)
 library(tidyr)
+library(dplyr)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
@@ -166,41 +167,47 @@ gg_comb <- ggplot(cdat, aes(x = type, y = IC50, group = label)) +
   xlab(element_blank())
 ggsave("figures/comb.png", gg_comb, width = 6, height = 4)
 
-nP <- 1
+set.seed(99)
+nP <- 3
 randP <- sample(1:length(prot_names), nP)
-pdat <- agg_data[, c(prot_names_0[randP], 'protein_plate', 'pertLabel')]
+prot <- c("P15880.P15880.RS2_HUMAN.RPS2.40S.ribosomal.protein.S2", 
+          "P62244.P62244.RS15A_HUMAN.RPS15A.40S.ribosomal.protein.S15a", 
+          "P35579.P35579.MYH9_HUMAN.MYH9.Myosin.9")
+randP <- which(prot_names %in% prot)
+
+pdat <- agg_data[agg_data$type == 'singleDrug', c(prot_names_0[randP], 'protein_plate', 'pertLabel', 'IC50')]
 names(pdat)[1:nP] <- paste0('P', 1:nP)
-pdat <- gather(pdat, key = "protein", value = "expression", -protein_plate, -pertLabel)
+#names(pdat)[1:nP] <- prot_names[randP]
+pdat <- gather(pdat, key = "protein", value = "expression", -protein_plate, -pertLabel, -IC50)
 pdat$time <- 0
 
-pdat6 <- agg_data[, c(prot_names_6[randP], 'protein_plate', 'pertLabel')]
+pdat6 <- agg_data[agg_data$type == 'singleDrug', c(prot_names_6[randP], 'protein_plate', 'pertLabel', 'IC50')]
 names(pdat6)[1:nP] <- paste0('P', 1:nP)
-pdat6 <- gather(pdat6, key = "protein", value = "expression", -protein_plate, -pertLabel)
+#names(pdat6)[1:nP] <- prot_names[randP]
+pdat6 <- gather(pdat6, key = "protein", value = "expression", -protein_plate, -pertLabel, -IC50)
 pdat6$time <- 6
 
-pdat24 <- agg_data[, c(prot_names_24[randP], 'protein_plate', 'pertLabel')]
+pdat24 <- agg_data[agg_data$type == 'singleDrug', c(prot_names_24[randP], 'protein_plate', 'pertLabel', 'IC50')]
 names(pdat24)[1:nP] <- paste0('P', 1:nP)
-pdat24 <- gather(pdat24, key = "protein", value = "expression", -protein_plate, -pertLabel)
+#names(pdat24)[1:nP] <- prot_names[randP]
+pdat24 <- gather(pdat24, key = "protein", value = "expression", -protein_plate, -pertLabel, -IC50)
 pdat24$time <- 24
 
-pdat48 <- agg_data[, c(prot_names_48[randP], 'protein_plate', 'pertLabel')]
+pdat48 <- agg_data[agg_data$type == 'singleDrug', c(prot_names_48[randP], 'protein_plate', 'pertLabel', 'IC50')]
 names(pdat48)[1:nP] <- paste0('P', 1:nP)
-pdat48 <- gather(pdat48, key = "protein", value = "expression", -protein_plate, -pertLabel)
+#names(pdat48)[1:nP] <- prot_names[randP]
+pdat48 <- gather(pdat48, key = "protein", value = "expression", -protein_plate, -pertLabel, -IC50)
 pdat48$time <- 48
 
 pdat <- rbind(pdat, pdat6, pdat24, pdat48)
 
-
-ggplot(pdat, aes(y = expression, x = time, group = interaction(protein, pertLabel, protein_plate))) + 
-  geom_line(aes(color = pertLabel)) + theme_bw()
-
 #plot mean per protein per timepoint in pdat
-library(dplyr)
 
-pdat_mean <- pdat %>% group_by(protein, time, pertLabel) %>% summarise(mean = mean(expression, na.rm = T))
-ggplot(pdat_mean, aes(x = time, y = mean, group = interaction(protein, pertLabel))) + 
-  geom_line()
+pdat_mean <- pdat %>% group_by(protein, time, pertLabel) %>% summarise(expression = mean(expression, na.rm = T), 
+                                                                       IC50 = mean(IC50, na.rm = T))
+gg_ptime <- ggplot(pdat_mean, aes(x = time, y = expression, group = interaction(protein, pertLabel), color = IC50)) + 
+  geom_line(linewidth = 0.2) + facet_wrap(~protein) + theme_bw()
+gg_ptime
 
-
-
+ggsave("figures/ptime.png", gg_ptime, width = 8, height = 3)
 
