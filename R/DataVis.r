@@ -13,6 +13,15 @@ load("data/combData.RData")
 X <- data[, prot_names]
 umap_res <- umap(X, n_neighbors = 50, min_dist = 0.5)
 
+dim(comb_data)
+dim(data)
+dim(agg_data)
+
+dim(comb_data[comb_data$type == 'singleDrug', ])
+dim(data[data$type == 'singleDrug', ])
+dim(agg_data[agg_data$type == 'singleDrug', ])
+
+
 #plot UMAP
 umap_res <- data.frame(umap_res$layout)
 umap_res$IC50 <- data$IC50
@@ -210,4 +219,5 @@ gg_ptime <- ggplot(pdat_mean, aes(x = time, y = expression, group = interaction(
 gg_ptime
 
 ggsave("figures/ptime.png", gg_ptime, width = 8, height = 3)
+
 
