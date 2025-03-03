@@ -1,4 +1,4 @@
-library(SDForest)
+library(SDModels)
 
 load('results/fit_plain.Rdata')
 load('results/fit_sdf.Rdata')
@@ -7,6 +7,9 @@ load('results/fit_anchor.Rdata')
 imp_plain <- fit_plain$var_importance
 imp_sdf <- fit_sdf$var_importance
 imp_anchor <- fit_anchor$var_importance
+
+important_prot <- sort(imp_anchor, decreasing = T)[1:(0.01*length(imp_anchor)/3)]
+save(important_prot, file = 'results/impProt.RData')
 
 plot(log(imp_plain), log(imp_sdf))
 plot(log(imp_plain), log(imp_anchor))
