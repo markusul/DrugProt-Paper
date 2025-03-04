@@ -84,13 +84,20 @@ perf_tree_in <- sapply(1:nrow(impData), function(testInd){
   impData_test <- impData[testInd, ]
   impData_train <- impData[-testInd, ] 
 
-  fit_simple <- rpart(Y ~ ., impData_train, control = rpart.control(cp = 0, xval = 20))
+  fit_simple <- rpart(Y ~ ., impData_trainl,m, control = rpart.control(cp = 0, xval = 20))
   cp_min <- fit_simple$cptable[which.min(fit_simple$cptable[, 'xerror']), 'CP']
   pFit <- rpart::prune(fit_simple, cp_min)
   (impData_test$Y - predict(pFit, impData_test))**2
 })
 perf_tree_in
 1 - mean(perf_tree_in) / var(Y)
+
+
+fit_simple <- rpart(Y ~ ., impData, control = rpart.control(cp = 0, xval = 20))
+cp_min <- fit_simple$cptable[which.min(fit_simple$cptable[, 'xerror']), 'CP']
+pFit <- rpart::prune(fit_simple, cp_min)
+rattle::fancyRpartPlot(pFit, sub = '')
+
 
 library(SDModels)
 gamma_seq <- c(0.0000001, exp(seq(-2,1,0.5)))
