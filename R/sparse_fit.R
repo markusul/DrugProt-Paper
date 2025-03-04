@@ -100,7 +100,7 @@ rattle::fancyRpartPlot(pFit, sub = '')
 
 
 library(SDModels)
-gamma_seq <- c(0.0000001, exp(seq(-2,1,0.5)))
+gamma_seq <- c(0.0000001, exp(seq(-2,1,0.5)), 5)
 #gamma_seq <- c(0, 0.001, 0.5, 1, 1.5, 2, 5)
 
 perf <- sapply(gamma_seq, function(gamma){
