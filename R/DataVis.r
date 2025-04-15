@@ -1,4 +1,4 @@
-library(SDForest)
+library(SDModels)
 library(ggplot2)
 library(umap)
 library(tidyr)
@@ -8,6 +8,9 @@ load("data/prepData.RData")
 load("data/protNames.RData")
 load("data/aggData.RData")
 load("data/combData.RData")
+
+# number of time zero experiments per protein plate
+table(data[data$pert_time == 0, "protein_plate"])
 
 # Visualization of Protein expression
 X <- data[, prot_names]
@@ -20,7 +23,6 @@ dim(agg_data)
 dim(comb_data[comb_data$type == 'singleDrug', ])
 dim(data[data$type == 'singleDrug', ])
 dim(agg_data[agg_data$type == 'singleDrug', ])
-
 
 #plot UMAP
 umap_res <- data.frame(umap_res$layout)
@@ -155,6 +157,7 @@ length(prot_names)
 tail(names(data), 100)
 
 cdat <- data[data$type == 'drugCombination', c('IC50', 'pertLabel')]
+dim(cdat)
 cdat <- cdat[!is.na(cdat$IC50), ]
 cdat$pertLabel
 
@@ -170,11 +173,48 @@ cdat <- cdat[, c('IC50', 'type')]
 cdat$label <- 1:nrow(cdat)
 cdat <- rbind(cdat, data.frame(IC50 = res['Anchor', ], type = 'Anchor', label = 1:ncol(res)))
 cdat <- rbind(cdat, data.frame(IC50 = res['Library', ], type = 'Library', label = 1:ncol(res)))
+dim(cdat)
 
 gg_comb <- ggplot(cdat, aes(x = type, y = IC50, group = label)) + 
   geom_line(linewidth = 0.01) + theme_bw() + 
   xlab(element_blank())
+gg_comb
 ggsave("figures/comb.png", gg_comb, width = 6, height = 4)
+
+IC <- data$IC50[data$type == "drugCombination"]
+names(IC) <- 1:length(IC)
+unique(data[data$type == "drugCombination", ][as.numeric(names(sort(IC)[1:100])), c('pertLabel', 'IC50')])
+unique(data[data$type == "drugCombination", ][as.numeric(names(sort(IC, decreasing = T)[1:100])), c('pertLabel', 'IC50')])
+
+
+cdat <- data[data$type == 'drugCombination', c('IC50', 'pertLabel')]
+dim(cdat)
+cdat <- cdat[!is.na(cdat$IC50), ]
+cdat$pertLabel
+
+cdat <- tapply(cdat$IC50, cdat$pertLabel, mean)
+cdat <- data.frame(IC50 = cdat)
+cdat$pertLabel <- rownames(cdat)
+
+dAB <- matrix(unlist(strsplit(cdat[, 'pertLabel'], " ")), ncol = 2, byrow = T)
+
+res <- apply(dAB, 1, function(ab){
+  c(Anchor = mean(data$IC50[data$pertLabel == ab[1]], na.rm = T),
+    Library = mean(data$IC50[data$pertLabel == ab[2]], na.rm = T))
+})
+
+cdat$type <- 'Combination'
+cdat <- cdat[, c('IC50', 'type')]
+cdat$label <- 1:nrow(cdat)
+cdat <- rbind(cdat, data.frame(IC50 = res['Anchor', ], type = 'Anchor', label = 1:ncol(res)))
+cdat <- rbind(cdat, data.frame(IC50 = res['Library', ], type = 'Library', label = 1:ncol(res)))
+dim(cdat)
+
+gg_comb <- ggplot(cdat, aes(x = type, y = IC50, group = label)) + 
+  geom_line(linewidth = 0.1) + theme_bw() + 
+  xlab(element_blank())
+gg_comb
+
 
 set.seed(99)
 nP <- 3
