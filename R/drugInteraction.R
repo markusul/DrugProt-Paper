@@ -43,3 +43,33 @@ fit <- DDL(X = X, Y = Y, index = 3)
 
 plot(D[1, ])
 plot(colMeans(D))
+
+library(hdi)
+
+Y <- jitter(Y)
+Y <- rnorm(length(Y))
+plot(Y)
+plot(D[, 16], Y)
+fit2 <- boot.lasso.proj(x = D, y = Y, ncores = 20, parallel = TRUE)
+plot(fit2$pval)
+plot(fit2$pval.corr)
+
+fit2 <- hdi(x = D, y = Y)
+
+library(truncnorm)
+?rtruncnorm
+
+add_noise_to_imputation <- function(x){
+    x <- dat[dat$protein_plate == dat$protein_plate[1], P]
+    border <- sort(unique(x))[2]
+    imp <- which(x < border)
+    x_ <- x[-imp]
+    y <- x
+    y[imp] <- truncnorm::rtruncnorm(length(imp), a = -Inf, b = border, mean = mean(x_), sd = sd(x_))
+    Y
+}
+
+plot(x)
+points(y, col = 3)
+
+plot(x, y)

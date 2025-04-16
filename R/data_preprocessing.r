@@ -7,6 +7,9 @@ na_imputation <- function(x){
 }
 
 dat <- read.csv('data/ProteinMatrix_sampleID_MapEC50_20240229.csv')
+
+plot(log(dat[, P]), col = as.factor(dat$machine))
+
 # why are the no IC50 values for some single drug experiments?
 #dat[dat$pert_id == dAB[472] & is.na(dat$EC50), 5580:ncol(dat)]
 
