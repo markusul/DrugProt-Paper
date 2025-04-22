@@ -42,21 +42,19 @@ t <- 6
 # Data for model
 Y <- datI[datI$pert_time == t, P] - datI[datI$pert_time == t, paste0(P, "_0")]
 D <- datI[datI$pert_time == t, pert_names]
-modelDat <- data.frame(Y = Y, D = D)
-
-fit1 <- lm(Y ~ -1 + .^2, modelDat)
-col <- c(rep("blue", ncol(D)), rep("red", choose(ncol(D), 2)))
-plot(fit1$coefficients, col = col)
 
 # debiased lasso
 library(hdi)
 
 ## prepare design matrix with interactions
 drug_design <- model.matrix(~ -1 + .^2, data = D)
+dLabels <- c(colnames(drug_design), colnames(drug_design))
 
 # remove tratements wihtout data
 with_data <- apply(drug_design, 2, function(x) length(unique(x))) != 1
 drug_design <- drug_design[, with_data]
+dLabels_measured <- colnames(drug_design)
+dlabels_model <- c(dLabels_measured, dLabels_measured)
 
 # add intercept to each treatment
 drug_intercept <- drug_design
@@ -68,71 +66,30 @@ drug_design <- cbind(drug_design, drug_intercept)
 
 #labels
 single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
-length(single_effects[c(with_data, with_data)])
-dim(drug_design)
+colnames(drug_design)
 
-fit2 <- lasso.proj(x = drug_design, y = Y, ncores = 11, parallel = TRUE)
-plot(fit2$pval)
-plot(fit2$pval.corr)
+#hdi fit
+fit <- lasso.proj(x = drug_design, y = Y, ncores = 11, parallel = TRUE)
 
-fit2
+pMat <- matrix(NA, nrow = ncol(D), ncol = ncol(D))
+rownames(pMat) <- colnames(pMat) <- dLabels[1:ncol(D)]
 
-dev.off()
-svd(D)
-which(is.na(dat[dat$pert_time == t, paste0(P, "_0")]))
-plot(drug_design[, '`drug_#56`:`drug_#64`'])
-unique(dat$protein_plate)
+for(l in dLabels_measured){
+  pval <- fit$groupTest(which(dlabels_model == l))
+  drugs <- strsplit(l, ":")[[1]]
+  if(length(drugs) == 1) drugs <- c(drugs, drugs)
+  pMat[drugs[1], drugs[2]] <- pval
+  pMat[drugs[2], drugs[1]] <- pval
+}
 
-dat[dat$pert_time == t, ][which(is.na(dat[dat$pert_time == t, paste0(P, "_0")])), "protein_plate"]
-apply(D, 2, function(x) cor(x, Y))
+pMat
+pMat[is.na(pMat)] <- 2
 
+res <- heatmap(pMat)
+gplots::heatmap.2(pMat)
 
-plot(Y)
-dev.off()
+pMat <- pMat[res$rowInd, res$colInd]
+pMat <- round(pMat, 4)
 
-
-library(pemultinom)
-install.packages("pemultinom")
-
-X <- as.matrix(D)
-str(X)
-fit2 <- debiased_lasso(x = X, y = Y)
-
-debiased_lasso(x = rnorm(100), y = rnorm(100))
-
-library(DDL)
-fit <- DDL(X = X, Y = Y, index = 3)
-
-
-plot(D[1, ])
-plot(colMeans(D))
-
-library(hdi)
-lasso.proj(x = D, y = Y)
-
-
-
-Y <- jitter(Y)
-Y <- rnorm(length(Y))
-plot(Y)
-plot(D[, 16], Y)
-fit2 <- boot.lasso.proj(x = D, y = Y, ncores = 20, parallel = TRUE)
-plot(fit2$pval)
-plot(fit2$pval.corr)
-
-fit2 <- hdi(x = D, y = Y)
-
-library(truncnorm)
-?rtruncnorm
-
-x <- dat[dat$protein_plate == dat$protein_plate[1], P]
-
-
-
-plot(dat[, 10], datI[, 10], col = as.factor(dat$protein_plate))
-
-dat[, p]
-y <- tapply(dat[, p], dat$protein_plate, add_noise_to_imputation)
-dim(y)
-length(y)
-plot(dat[, p], y)
+plotly::plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
+                type = "heatmap", colors = "Greys")
