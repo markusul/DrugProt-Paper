@@ -86,10 +86,14 @@ pMat
 pMat[is.na(pMat)] <- 2
 
 res <- heatmap(pMat)
-gplots::heatmap.2(pMat)
 
 pMat <- pMat[res$rowInd, res$colInd]
-pMat <- round(pMat, 4)
+#pMat <- -log(pMat)
+pMat <- round(pMat, 3)
 
-plotly::plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
+library(plotly)
+  
+ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
                 type = "heatmap", colors = "Greys")
+ht
+htmlwidgets::saveWidget(as_widget(ht), "p6c.html")
