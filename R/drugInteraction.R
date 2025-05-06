@@ -50,24 +50,24 @@ uniqueExp <- unique(datI[!(datI$pertLabel %in% c('no', 'no no')),
                            "pertLabel", 'protein_plate')])
 str(uniqueExp)
 expTimes <- c(6, 24, 48)
-prev <- 6
 
-experiment <- uniqueExp[1, ]
-
-aggData <- sapply(1:nrow(uniqueExp), function(i){
-  experiment <- uniqueExp[i, ]
+aggData <- lapply(expTimes, function(prev) {
+  sapply(1:nrow(uniqueExp), function(i){
+    experiment <- uniqueExp[i, ]
   
-  anchor <- datI$Anchor_dose == experiment$Anchor_dose
-  libr <- datI$Library_dose == experiment$Library_dose
-  pert <- datI$pertLabel == experiment$pertLabel
-  plate <- datI$protein_plate == experiment$protein_plate
-  tim <- datI$pert_time == prev
-
-  sel <- anchor & libr & pert & plate & tim
+    anchor <- datI$Anchor_dose == experiment$Anchor_dose
+    libr <- datI$Library_dose == experiment$Library_dose
+    pert <- datI$pertLabel == experiment$pertLabel
+    plate <- datI$protein_plate == experiment$protein_plate
+    tim <- datI$pert_time == prev
+    sel <- anchor & libr & pert & plate & tim
   
-  if(sum(sel) == 0) print(experiment)
-  colMeans(data[sel, prot_names])
+    if(sum(sel) == 0) print(experiment)
+    t(colMeans(datI[sel, prot_names]))
+  })
 })
+
+dim(aggData[[1]])
 
 aggData[1:3, 1680]
 
