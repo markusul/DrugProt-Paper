@@ -1,9 +1,15 @@
 library(hdi)
 library(plotly)
+library(parallel)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
-dim(data)
+
+data$pertLabel[data$pertLabel == 'no no'] <- 'no'
+
+# remove proteins with less than 11 unique values
+abundand <- apply(data[, prot_names], 2, function(x) length(unique(x)) > 10)
+prot_names <- prot_names[abundand]
 
 #mean per protein plate at time 0
 dat0 <- data[data$pert_time == 0, ]
@@ -27,6 +33,8 @@ dat <- dat[dat$protein_plate != "M453(ATCC)", ]
 
 # add nois to imputation for computational und statistical stability
 add_noise_to_imputation <- function(x){
+  if(length(unique(x)) < 3) return(x)
+  
   border <- sort(unique(x))[2]
   imp <- which(x < border)
   x_ <- x[-imp]
@@ -39,20 +47,21 @@ datI <- dat
 plate_idx <- lapply(unique(dat$protein_plate), function(plate) which(dat$protein_plate == plate))
 
 for(p in prot_names){
-  for(plate in plate_idx)
+  for(plate in plate_idx){
+    if(sum(is.na(add_noise_to_imputation(datI[plate, p]))) > 0)stop('nas produced')
     datI[plate, p] <- add_noise_to_imputation(datI[plate, p])
+    
+  }
 }
 
 ### collect aggregated lagged times
 # unique experiments
-uniqueExp <- unique(datI[!(datI$pertLabel %in% c('no', 'no no')), 
-                         c("Anchor_dose", "Library_dose", 
-                           "pertLabel", 'protein_plate')])
-str(uniqueExp)
+uniqueExp <- unique(datI[, c("Anchor_dose", "Library_dose", "pertLabel", 'protein_plate')])
+
 expTimes <- c(6, 24, 48)
 
 aggData <- lapply(expTimes, function(prev) {
-  sapply(1:nrow(uniqueExp), function(i){
+  t(sapply(1:nrow(uniqueExp), function(i){
     experiment <- uniqueExp[i, ]
   
     anchor <- datI$Anchor_dose == experiment$Anchor_dose
@@ -62,14 +71,32 @@ aggData <- lapply(expTimes, function(prev) {
     tim <- datI$pert_time == prev
     sel <- anchor & libr & pert & plate & tim
   
-    if(sum(sel) == 0) print(experiment)
-    t(colMeans(datI[sel, prot_names]))
-  })
+    if(sum(sel) == 0) {
+      print(prev)
+      print(experiment)
+      }
+    colMeans(datI[sel, prot_names])
+  }))
 })
 
-dim(aggData[[1]])
+sum(is.na(datI[, prot_names]))
+sum(is.na(colMeans(datI[sel, prot_names])))
 
-aggData[1:3, 1680]
+# add experiment label
+datInfo <- datI[, c("Anchor_dose", "Library_dose", "pertLabel", 'protein_plate')]
+label <- rep(NA, nrow(datInfo))
+
+for(i in 1:nrow(uniqueExp)){
+  experiment <- uniqueExp[i, ]
+  anchor <- datI$Anchor_dose == experiment$Anchor_dose
+  libr <- datI$Library_dose == experiment$Library_dose
+  pert <- datI$pertLabel == experiment$pertLabel
+  plate <- datI$protein_plate == experiment$protein_plate
+  sel <- anchor & libr & pert & plate
+  
+  label[sel] <- i
+}
+datI$label <- label
 
 # protein of interest
 P <- "P08621.P08621.RU17_HUMAN.SNRNP70.U1.small.nuclear.ribonucleoprotein.70.kDa"
@@ -98,19 +125,29 @@ colnames(drug_intercept) <- paste0(colnames(drug_design), "_intercept")
 drug_design <- cbind(drug_design, drug_intercept)
 design <- drug_design
 
-# for time 24 and 48 use lagged protein expression
+#protein design
+laggedTime <- which(expTimes == t) - 1
 
-datI[datI$pert_time == t, ]
+if(laggedTime > 0){
+  max(datI[datI$pert_time == t, 'label'])
+  sum(is.na(aggData[[laggedTime]]))
+  sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
+  protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
 
-design <- cbind(design, protein_design)
+  design <- cbind(design, protein_design)
 
+  # remove samples without lagged protein measurements
+  noLagged <- rowSums(is.na(design)) > 0
+  design <- design[!noLagged, ]
+  Y <- Y[!noLagged]
+}
 
 #labels
 single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
 colnames(drug_design)
 
 #hdi fit
-fit <- lasso.proj(x = design, y = Y, ncores = 11, parallel = TRUE)
+fit <- lasso.proj(x = design, y = Y, ncores = 22, parallel = TRUE)
 
 pMat <- matrix(NA, nrow = ncol(D), ncol = ncol(D))
 rownames(pMat) <- colnames(pMat) <- dLabels[1:ncol(D)]
