@@ -1,6 +1,7 @@
 library(hdi)
 library(plotly)
 library(parallel)
+library(data.table)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
@@ -79,8 +80,6 @@ aggData <- lapply(expTimes, function(prev) {
   }))
 })
 
-sum(is.na(datI[, prot_names]))
-sum(is.na(colMeans(datI[sel, prot_names])))
 
 # add experiment label
 datInfo <- datI[, c("Anchor_dose", "Library_dose", "pertLabel", 'protein_plate')]
@@ -100,7 +99,7 @@ datI$label <- label
 
 # protein of interest
 P <- "P08621.P08621.RU17_HUMAN.SNRNP70.U1.small.nuclear.ribonucleoprotein.70.kDa"
-t <- 48
+t <- 6
 
 # Data for model
 Y <- datI[datI$pert_time == t, P] - datI[datI$pert_time == t, paste0(P, "_0")]
@@ -147,7 +146,7 @@ single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
 colnames(drug_design)
 
 #hdi fit
-fit <- lasso.proj(x = design, y = Y, ncores = 22, parallel = TRUE)
+fit <- lasso.proj(x = design, y = Y)
 
 pMat <- matrix(NA, nrow = ncol(D), ncol = ncol(D))
 rownames(pMat) <- colnames(pMat) <- dLabels[1:ncol(D)]
@@ -160,14 +159,23 @@ for(l in dLabels_measured){
   pMat[drugs[2], drugs[1]] <- pval
 }
 
-pMat
-pMat[is.na(pMat)] <- 2
+pMat <- as.data.table(pMat)
+pval.corr <- NULL
 
-pMat <- pMat[drugOrder, drugOrder]
+if(laggedTime > 0){
+  pval.corr <- fit$pval.corr
+  pval.corr[(length(dlabels_model)+1):length(pval.corr)]
+}
+
+save(file = paste0('pvals/', which(prot_names == P) , '_', t, '.RData'), P, pMat, pval.corr)
+
+#pMat[is.na(pMat)] <- 2
+
+#pMat <- pMat[drugOrder, drugOrder]
 #pMat <- -log(pMat)
-pMat <- round(pMat, 3)
+#pMat <- round(pMat, 3)
 
 
-ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
-                type = "heatmap", colors = "Greys")
-ht
+#ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
+#                type = "heatmap", colors = "Greys")
+#ht
