@@ -140,6 +140,14 @@ gg_conc
 
 ggsave('figures/conc.png', gg_conc, width = 4, height = 3)
 
+gg_conc2 <- ggplot(data, aes(x = `drug_#40`, y = `drug_#77`)) + 
+  geom_point(size = 0.7) + theme_bw() + 
+  xlab(expression(paste(mu, "mol Pemetrexed Disodium Hydrate"))) +
+  ylab(expression(paste(mu, "mol Oxaliplatin")))
+gg_conc2
+
+ggsave('figures/conc2.png', gg_conc2, width = 4, height = 3)
+
 #variation of IC50
 length(unique(data$IC50))
 length(unique(comb_data$pertLabel)) * 18
