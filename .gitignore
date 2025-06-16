@@ -2,6 +2,9 @@
 /slurm
 /outfiles
 /results
+/models
+/Z
+/pvals
 
 # History files
 .Rhistory
