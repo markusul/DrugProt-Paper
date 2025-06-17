@@ -15,6 +15,12 @@ dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = mean)
 drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
 
+# collect protein names in short
+prot_names_short <- sapply(prot_names, function(p) strsplit(p, '[.]')[[1]][1])
+
+# save order and short names
+save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names)
+
 # add mean at 0 to data
 names(dat0)[-1] <- paste0(names(dat0)[-1], "_0")
 row.names(dat0) <- dat0[, 1]
