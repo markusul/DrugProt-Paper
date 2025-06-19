@@ -44,6 +44,28 @@ ggumap <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) +
 ggumap
 ggsave("figures/umap.png", ggumap, width = 10, height = 6)
 
+data$type
+
+umap_control <- umap(X[data$pertLabel %in% c('no', 'no no'), ], 
+                     n_neighbors = 50, min_dist = 0.5)
+umap_control <- data.frame(umap_control$layout)
+umap_control$IC50 <- data$IC50[data$pertLabel %in% c('no', 'no no')]
+umap_control$protein_plate <- data$protein_plate[data$pertLabel %in% c('no', 'no no')]
+umap_control$pert_time <- as.factor(data$pert_time[data$pertLabel %in% c('no', 'no no')])
+umap_control$pertLabel <- data$pertLabel[data$pertLabel %in% c('no', 'no no')]
+umap_control$type <- data$type[data$pertLabel %in% c('no', 'no no')]
+
+ggumap_control <- ggplot(umap_control, aes(x = X1, y = X2, color = pert_time)) + 
+  geom_point(size = 0.5) + theme_bw() + 
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) + 
+  ggtitle('control')
+ggumap_control
+ggsave("figures/umapc1.png", ggumap0, width = 5, height = 4)
 
 umap_0 <- umap(X[data$pert_time == 0, ], n_neighbors = 50, min_dist = 0.5)
 umap_0 <- data.frame(umap_0$layout)
@@ -51,6 +73,7 @@ umap_0$IC50 <- data$IC50[data$pert_time == 0]
 umap_0$protein_plate <- data$protein_plate[data$pert_time == 0]
 umap_0$pert_time <- as.factor(data$pert_time[data$pert_time == 0])
 umap_0$pertLabel <- data$pertLabel[data$pert_time == 0]
+umap_0$type <- data$type[data$pert_time == 0]
 
 ggumap0 <- ggplot(umap_0, aes(x = X1, y = X2, color = protein_plate)) + 
     geom_point(size = 0.5) + theme_bw() + 
@@ -59,10 +82,13 @@ ggumap0 <- ggplot(umap_0, aes(x = X1, y = X2, color = protein_plate)) +
         axis.ticks.x=element_blank()) + 
     theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
-        axis.ticks.y=element_blank())
+        axis.ticks.y=element_blank()) + 
+  ggtitle('t = 0')
 ggumap0
+ggplotly(ggumap0)
 ggsave("figures/umap0.png", ggumap0, width = 5, height = 4)
 
+data$type[data$pertLabel == "no no"]
 
 umap_6 <- umap(X[data$pert_time == 6, ], n_neighbors = 50, min_dist = 0.5)
 umap_6 <- data.frame(umap_6$layout)
@@ -70,16 +96,19 @@ umap_6$IC50 <- data$IC50[data$pert_time == 6]
 umap_6$protein_plate <- data$protein_plate[data$pert_time == 6]
 umap_6$pert_time <- as.factor(data$pert_time[data$pert_time == 6])
 umap_6$pertLabel <- data$pertLabel[data$pert_time == 6]
+umap_6$type <- data$type[data$pert_time == 6]
+umap_6$control <- umap_6$pertLabel == "no no"
 
-ggumap6 <- ggplot(umap_6, aes(x = X1, y = X2, color = IC50)) + 
-    geom_point(size = 0.1) + theme_bw() + 
+ggumap6 <- ggplot(umap_6, aes(x = X1, y = X2, color = pertLabel)) + 
+    geom_point() + theme_bw() + 
     theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank()) + 
     theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
-        axis.ticks.y=element_blank())
-ggumap6
+        axis.ticks.y=element_blank()) + 
+  ggtitle('t = 6')
+ggplotly(ggumap6)
 ggsave("figures/umap6.png", ggumap6, width = 5, height = 4)
 
 umap_24 <- umap(X[data$pert_time == 24, ], n_neighbors = 50, min_dist = 0.5)
