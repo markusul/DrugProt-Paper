@@ -1,7 +1,9 @@
 args = commandArgs(trailingOnly = TRUE)
+args <- 3753
 
 library(hdi)
 
+set.seed(22)
 load("data/laggedData.RData")
 expTimes <- c(6, 24, 48)
 
@@ -59,8 +61,9 @@ for(t in expTimes){
   # load projections
   load(paste0('Z/', t, '.RData'))
   
-  #hdi fit
-  fit <- lasso.proj(x = design, y = Y, Z = Z)
+  #hdi fit with robustness against model misspecifications
+  fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
+  
   #save model
   save(file = paste0('models/', which(prot_names == P) , '_', t, '.RData'), fit)
   
@@ -68,26 +71,26 @@ for(t in expTimes){
   pMat <- matrix(NA, nrow = ncol(D), ncol = ncol(D))
   rownames(pMat) <- colnames(pMat) <- dLabels[1:ncol(D)]
   for(l in dLabels_measured){
-    pval <- fit$groupTest(which(dlabels_model == l))
+    # use conservative = FALSE because this would correct also using the number of protein effects
+    pval <- fit$groupTest(which(dlabels_model == l), conservative = TRUE)
+    pval <- min(1, pval * length(dLabels_measured)) # bonferroni correction with the number of groups
     drugs <- strsplit(l, ":")[[1]]
     if(length(drugs) == 1) drugs <- c(drugs, drugs)
     pMat[drugs[1], drugs[2]] <- pval
     pMat[drugs[2], drugs[1]] <- pval
   }
   
-  
   # collect p values for protein effects
   pval.corr <- NULL
   pval <- NULL
   
-  if(laggedTime > 0){
+  if(laggedTime > 0){ # return p values for protein effects
     pval.corr <- fit$pval.corr
     pval.corr <- pval.corr[(length(dlabels_model)+1):length(pval.corr)]
     
     pval <- fit$pval
     pval <- pval[(length(dlabels_model)+1):length(pval)]
   }
-  
   save(file = paste0('pvals/', which(prot_names == P) , '_', t, '.RData'), P, 
        pMat, pval, pval.corr, prot_names)
 }
