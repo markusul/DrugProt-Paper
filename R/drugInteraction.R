@@ -1,16 +1,15 @@
-args = commandArgs(trailingOnly = TRUE)
-args <- 3753
-
 library(hdi)
 
+RNGkind("L'Ecuyer-CMRG")
 set.seed(22)
+
 load("data/laggedData.RData")
 expTimes <- c(6, 24, 48)
 
-# protein of interest
-P <- prot_names[as.numeric(args[1])]
-
-for(t in expTimes){
+#res <- lapply(prot_names, function(P){
+res <- parallel::mclapply(prot_names, mc.cores = 100, function(P){
+lapply(expTimes, function(t){
+#parallel::mclapply(expTimes, mc.cores = 3, function(t){
   print(P)
   print(t)
   
@@ -93,7 +92,8 @@ for(t in expTimes){
   }
   save(file = paste0('pvals/', which(prot_names == P) , '_', t, '.RData'), P, 
        pMat, pval, pval.corr, prot_names)
-}
+})
+})
 
 print("finished!")
 
