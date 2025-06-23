@@ -1,12 +1,12 @@
 library(hdi)
+set.seed(22)
 
 load("data/laggedData.RData")
-expTimes <- c(6, 24, 48)
+expTimes <- c(48)
 
 # protein of interest
 P <- prot_names[1]
 
-t <- 48
 for(t in expTimes){
   print(P)
   print(t)
@@ -56,7 +56,9 @@ for(t in expTimes){
   colnames(drug_design)
   
   #hdi fit
-  fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T)
+  fit <- lasso.proj(x = design, y = Y, return.Z = T, 
+                    suppress.grouptesting = T, 
+                    parallel = T, ncores = 100)
   #save Z
   Z <- fit$Z
   save(file = paste0('Z/', t, '.RData'), Z)
