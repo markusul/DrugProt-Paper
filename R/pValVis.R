@@ -3,8 +3,8 @@ library(plotly)
 load('data/order.RData')
 
 # protein of interest
-P <- 3753
-t <- 24
+P <- 1
+t <- 6
 alpha <- 0.5
 
 
@@ -35,10 +35,38 @@ plot(pval.corr, main = prot_names_short[which(prot_names == P)])
 prot_names_short[which(prot_names == P)]
 unname(prot_names_short[names(pval.corr[pval.corr < alpha])])
 
-
+t <- 6
 load(file = paste0('models/', P , '_', t, '.RData'))
-fit$
+
+plot(Y - design %*% fit$bhat, x = design %*% fit$bhat)
+car::qqPlot(design %*% fit$bhat)
+plot(sqrt(abs(Y - design %*% fit$bhat)), x = design %*% fit$bhat)
+
+
+
+library(hdi)
+?lasso.proj
+
 res <- fit$clusterGroupTest()
+names(res)
+
+
+
+
+
+
+res$pval
+
+unname(fit$pval)
+
+plot(res)
+res$pval
+res$clusters
+
+resfit$pval[1:2]
+fit$pval.corr[1]
+fit$groupTest(1:2, F)
+?fit$clusterGroupTest()
 res$rightCh
 plot(res)
 
