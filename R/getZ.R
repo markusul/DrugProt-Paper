@@ -6,7 +6,7 @@ expTimes <- c(6, 24, 48)
 # protein of interest
 P <- prot_names[1]
 
-t <- 6
+t <- 48
 for(t in expTimes){
   print(P)
   print(t)
@@ -43,8 +43,7 @@ for(t in expTimes){
     sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
     
-    #design <- cbind(design, protein_design)
-    design <- protein_design
+    design <- cbind(design, protein_design)
     
     # remove samples without lagged protein measurements
     noLagged <- rowSums(is.na(design)) > 0
