@@ -4,10 +4,8 @@ load('data/order.RData')
 
 # protein of interest
 P <- 3753
-t <- 24
+t <- 6
 alpha <- 0.5
-
-
 
 
 load(file = paste0('pvals/', P , '_', t, '.RData'))
@@ -58,46 +56,7 @@ Net <- lapply(c(24, 48), function(t){
   list(net, targets)
 })
 
-
-library(networkD3)
-
-alpha <- 0.8
-P <- 2
-
-which(targets == prot_names_short[P])
-
-ancPval <- Net[[1]][[1]][, targets == prot_names_short[P]]
-decPval <- Net[[2]][[1]][prot_names[P], ]
-
-min(ancPval)
-
-anc <- which(ancPval < alpha)
-dec <- which(decPval < alpha) + length(prot_names_short)
-
-source <- unname(c(anc, rep(P, length(dec)))) - 1
-target <- c(rep(P, length(anc)), dec) - 1
-
-nodenames <- c(prot_names_short, paste0(Net[[2]][[2]], '_48'))
-groups <- c(rep(0, length(prot_names_short)), rep(10, length(Net[[2]][[2]])))
-
-Links <- data.frame(source = source, target = target, value = 1)
-Nodes <- data.frame(name = nodenames, group = groups, size = 1)
-
-tail(Nodes)
-
-forceNetwork(Links = Links, Nodes = Nodes,
-             Source = "source", Target = "target",
-             Value = "value", NodeID = "name",
-             Group = "group", opacity = 0.99, 
-             arrows = T, zoom = T, 
-             colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
-
-
-# summary graph
-
-net <- Net[[1]]
-
-Links <- lapply(Net, function(net){
+Links_all <- lapply(Net, function(net){
   res <- apply(net[[1]], 2, function(pval) which(pval < alpha))
   links <- NULL
   for(i in 1:ncol(net[[1]])){
@@ -108,18 +67,57 @@ Links <- lapply(Net, function(net){
   colnames(links) <- c('source', 'target')
   links
 })
-Links <- do.call(rbind, Links)
-Links$source <- Links$source - 1
-Links$target <- Links$target - 1
-Links$value <- 1
-Nodes <- data.frame(name = prot_names_short, group = 1, size = 1)
 
 
-Links$source == 2
+library(networkD3)
 
-forceNetwork(Links = Links, Nodes = Nodes,
+alpha <- 0.8
+
+# summary graph
+Links_sum <- do.call(rbind, Links_all)
+Links_sum$source <- Links_sum$source - 1
+Links_sum$target <- Links_sum$target - 1
+Links_sum$value <- 1
+Nodes_sum <- data.frame(name = prot_names_short, group = 1, size = 1)
+
+forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
              Source = "source", Target = "target",
              Value = "value", NodeID = "name",
              Group = "group", opacity = 0.99, 
-             arrows = T, zoom = T, 
+             arrows = T, zoom = T, charge = -100,
+             opacityNoHover = TRUE,
              colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+
+
+# temporal graph
+expTimes <- c(6, 24, 48)
+nodenames <- c(paste(prot_names_short, expTimes[1], sep = '_'), 
+               paste(prot_names_short, expTimes[2], sep = '_'), 
+               paste(prot_names_short, expTimes[3], sep = '_'))
+nodegroups <- rep(paste0(expTimes, 'h'), each = length(prot_names_short))
+
+Links_temp <- lapply(1:2, function(t){
+  links <- Links_all[[t]]
+  links[, 1] <- links[, 1] + (t-1) * length(prot_names_short)
+  links[, 2] <- links[, 2] + (t) * length(prot_names_short)
+  links
+})
+Links_temp <- do.call(rbind, Links_temp)
+used_nodes <- sort(unique(unname(unlist(Links_temp))))
+
+Links_temp$source <- Links_temp$source - 1
+Links_temp$target <- Links_temp$target - 1
+Links_temp$value <- 1
+Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 1)
+Nodes_temp$size[used_nodes] <- 100
+
+forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
+             Source = "source", Target = "target",
+             Value = "value", NodeID = "name",
+             Group = "group", opacity = 0.99, Nodesize = 3,
+             arrows = T, zoom = T, legend=T, charge = -100,
+             opacityNoHover = TRUE,
+             colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+
+#ht
+#htmlwidgets::saveWidget(as_widget(ht), "temporalGraph.html")
