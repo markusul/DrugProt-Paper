@@ -26,12 +26,12 @@ for(group in Groups){
   envs[which(pertLabel %in% test_pert)] <- group
 }
 envs <- as.factor(envs)
-trees_envs <- rep(50, length(levels(envs)))
+trees_envs <- rep(200, length(levels(envs)))
 names(trees_envs) <- levels(envs)
 trees_envs['0'] <- 0
 
 library(SDModels)
-gamma_seq <- c(0.0000001, exp(seq(-2,1,0.5)), 5)
+gamma_seq <- c(0.0000001, 0.3, 0.6, seq(1, 4, 0.2))
 
 gamma <- gamma_seq[as.numeric(args[1])]
 
