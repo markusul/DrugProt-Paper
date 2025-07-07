@@ -1,4 +1,5 @@
 args = commandArgs(trailingOnly = TRUE)
+start_time <- Sys.time()
 
 library(hdi)
 set.seed(22)
@@ -57,11 +58,14 @@ single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
 colnames(drug_design)
 
 #hdi fit
-fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T, 
-                  parallel = T, ncores = 100)
+fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T)
+#                  parallel = T, ncores = 100)
 #save Z
 Z <- fit$Z
-save(file = paste0('Z/', t, '.RData'), Z)
+print(dim(Z))
 
+save(Z, file = paste0('Z/', t, '.RData'))
 
 print("finished!")
+end_time <- Sys.time()
+print(end_time - start_time)
