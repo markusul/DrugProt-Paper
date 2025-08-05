@@ -1,36 +1,26 @@
 library(plotly)
 
+# load ordering of drugs (sort drugs with experiments together)
 load('data/order.RData')
 nDrugs <- length(drugOrder)
-# protein of interest
-P <- 440
 
-allPvecs <- lapply(1:length(prot_names_short), function(P){
-pvec <- sapply(c(6, 24, 48), function(t){
-  if(file.exists(paste0('results/DrugEffects/', P , '_', t, '.RData'))){
-    load(file = paste0('results/DrugEffects/', P , '_', t, '.RData'))
-    pval.drugs <- p.adjust(pval.drugs, method = 'holm')
-    return(pval.drugs)
-  }else{
-    print(paste0(P, '_', t, " not found!"))
-    return(rep(1, 122))
-  }
-})
-if(!is.null(dim(pvec))) pvec <- apply(pvec, 1, function(p) min(min(p) * 3, 1))
-pvec
-})
-allPvecs
+load("results/DrugEffects.RData")
 
-
-allPvecs <- allPvecs[unlist(lapply(allPvecs, length)) == 122]
-allPvecs <- do.call(rbind, allPvecs)
-dim(allPvecs)
-length(prot_names_short)
-
+# clustering of proteins according to drug effects
 d <- dist(allPvecs)
 fit <- hclust(d)
 plot(fit)
 clusters <- cutree(fit, 7)
+
+
+
+P <- c(1:5000)
+P <- 1
+
+# collect min p value of drug effect over proteins
+pvec <- apply(matrix(allPvecs[P, ], nrow = length(P)), 2, min)
+pvec <- pmin(pvec * length(P), 1)
+names(pvec) <- colnames(allPvecs)
 
 pMat <- matrix(NA, nrow = nDrugs, ncol = nDrugs)
 rownames(pMat) <- colnames(pMat) <- names(pvec)[1:nDrugs]
@@ -42,19 +32,12 @@ for(l in names(pvec)){
 }
 
 pMat <- as.matrix(pMat)
-#rownames(pMat) <- colnames(pMat)
-
 pMat[is.na(pMat)] <- 2
-
 pMat <- pMat[drugOrder, drugOrder]
-#pMat <- -log(pMat)
-#pMat <- round(pMat, 3)
-min(pMat)
-
 
 ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
               type = "heatmap", colors = "Greys") %>%
-              layout(title = prot_names_short[which(prot_names == P)])
+              layout(title = prot_names_short[P])
 ht
 
 htmlwidgets::saveWidget(as_widget(ht), paste0(prot_names_short[which(prot_names == P)], ".html"))
@@ -100,26 +83,14 @@ fit$groupTest(1:2, F)
 res$rightCh
 plot(res)
 
+##### Protein Network ####
 
-Net <- lapply(c(24, 48), function(t){
-  net <- NULL
-  targets <- c()
-  
-  for (P in 1:length(prot_names)) {
-    path <- paste0('results/ProteinEffects/', P , '_', t, '.RData')
-    if(file.exists(path)){
-      load(file = path)
-      pval.corr <- p.adjust(pval[(length(pval)-length(prot_names_short) + 1):length(pval)], 
-                            method = "BH")
-      net <- cbind(net, pval.corr)
-      targets <- c(targets, prot_names_short[P])
-    }
-  }
-  list(net, targets)
-})
+load("results/proteinNetwork.RData")
 
+# significance level for full protein network
 alpha <- 0.05 / length(prot_names_short)
 
+# transform p value to links using alpha
 Links_all <- lapply(Net, function(net){
   res <- apply(net[[1]], 2, function(pval) which(pval < alpha))
   links <- NULL
@@ -132,8 +103,7 @@ Links_all <- lapply(Net, function(net){
   links
 })
 
-save(Net, Links_all, file = "results/proteinNetwork.RData")
-load("results/proteinNetwork.RData")
+
 
 
 library(networkD3)
