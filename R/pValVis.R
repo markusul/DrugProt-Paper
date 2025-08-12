@@ -1,21 +1,20 @@
 library(plotly)
+library(networkD3)
 
 # load ordering of drugs (sort drugs with experiments together)
 load('data/order.RData')
 nDrugs <- length(drugOrder)
 
+load("results/impProt.RData")
+P <- names(important_prot[1:20])
+P <- sapply(P, function(p) which(prot_names_short == strsplit(p, '[.]')[[1]][1]))
+
+
+##### Drug Effects ####
 load("results/DrugEffects.RData")
 
-# clustering of proteins according to drug effects
-d <- dist(allPvecs)
-fit <- hclust(d)
-plot(fit)
-clusters <- cutree(fit, 7)
-
-
-
-P <- c(1:5000)
-P <- 1
+P <- c(1:nrow(allPvecs))
+#P <- 1387
 
 # collect min p value of drug effect over proteins
 pvec <- apply(matrix(allPvecs[P, ], nrow = length(P)), 2, min)
@@ -40,55 +39,18 @@ ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat),
               layout(title = prot_names_short[P])
 ht
 
-htmlwidgets::saveWidget(as_widget(ht), paste0(prot_names_short[which(prot_names == P)], ".html"))
+#htmlwidgets::saveWidget(as_widget(ht), paste0(prot_names_short[which(prot_names == P)], ".html"))
 
-
-plot(pval.corr, main = prot_names_short[which(prot_names == P)])
-
-prot_names_short[which(prot_names == P)]
-unname(prot_names_short[names(pval.corr[pval.corr < alpha])])
-
-t <- 6
-load(file = paste0('models/', P , '_', t, '.RData'))
-
-plot(Y - design %*% fit$bhat, x = design %*% fit$bhat)
-car::qqPlot(design %*% fit$bhat)
-plot(sqrt(abs(Y - design %*% fit$bhat)), x = design %*% fit$bhat)
-
-
-
-library(hdi)
-?lasso.proj
-
-res <- fit$clusterGroupTest()
-names(res)
-
-
-
-
-
-
-res$pval
-
-unname(fit$pval)
-
-plot(res)
-res$pval
-res$clusters
-
-resfit$pval[1:2]
-fit$pval.corr[1]
-fit$groupTest(1:2, F)
-?fit$clusterGroupTest()
-res$rightCh
-plot(res)
 
 ##### Protein Network ####
 
 load("results/proteinNetwork.RData")
 
+# proteins of interest
+#P <- 200:260
+
 # significance level for full protein network
-alpha <- 0.05 / length(prot_names_short)
+alpha <- 0.05 / length(P) / 3
 
 # transform p value to links using alpha
 Links_all <- lapply(Net, function(net){
@@ -103,24 +65,18 @@ Links_all <- lapply(Net, function(net){
   links
 })
 
-
-
-
-library(networkD3)
-P <- c(98, 33, 134)
-
-
 # summary graph
 Links_sum <- do.call(rbind, Links_all)
 Links_sum$source <- Links_sum$source - 1
 Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
-Nodes_sum <- data.frame(name = prot_names_short, group = clusters, size = 1)
+Nodes_sum <- data.frame(name = prot_names_short, group = 1, size = 1)
 
 P.ind <- P - 1
 rel.Links <- Links_sum$source %in% P.ind | Links_sum$target %in% P.ind
 Links_sum <- Links_sum[rel.Links, ]
 rel.Nodes <- sort(unique(unlist(Links_sum[, c('source', 'target')])))
+Nodes_sum$group[P] <- 2
 Nodes_sum <- Nodes_sum[rel.Nodes+1, ]
 
 #reorganize link index
@@ -134,11 +90,11 @@ fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
              Source = "source", Target = "target",
              Value = "value", NodeID = "name",
              Group = "group", opacity = 0.99, 
-             arrows = T, zoom = T, charge = -20,
+             arrows = T, zoom = T, charge = -5,
              opacityNoHover = TRUE,
              colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN
-htmlwidgets::saveWidget(as_widget(fN), "SummaryGraph.html")
+#htmlwidgets::saveWidget(as_widget(fN), "SummaryGraph.html")
 
 
 # temporal graph
@@ -201,17 +157,10 @@ nodes$axis[nodes$axis == "48h"] <- 3
 nodes$axis <- as.integer(nodes$axis)
 nodes$id <- 1:nrow(nodes)
 nodes$radius <- nodes$radius * 3
-nodes$color <- c("black", "red", "blue", "green", "violet", "yellow", "darkgreen")[clusters]
-rep(c("black", "red", "blue", "green", "violet", "yellow", "darkgreen"), times = as.numeric(table(clusters)))
+nodes$color <- "black"
+#nodes$color <- c("black", "red", "blue", "green", "violet", "yellow", "darkgreen")[clusters]
+#rep(c("black", "red", "blue", "green", "violet", "yellow", "darkgreen"), times = as.numeric(table(clusters)))
 
-
-
-#sort by cliusters
-nodes$radius <- sort_by(nodes$radius * 3, rep(clusters, 3))
-length(nodes$radius)
-length(clusters) * 3
-
-str(nodes)
 
 HEC <- list()
 HEC$nodes <- nodes
@@ -222,7 +171,6 @@ HEC$axis.cols <- c("grey", "grey")
 class(HEC) <- "HivePlotData"
 
 chkHPD(HEC) # answer of FALSE means there are no problems
-#sumHPD(HEC)
 
 plotHive(HEC, ch = 0.001, bkgnd = "white", 
          axLabs = c("24h", "6h", "48h"), 
@@ -232,7 +180,7 @@ forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
              Source = "source", Target = "target",
              Value = "value", NodeID = "name",
              Group = "group", opacity = 0.99,# Nodesize = 3,
-             arrows = T, zoom = T, legend=T, charge = -20,
+             arrows = T, zoom = T, legend=T, charge = -5,
              opacityNoHover = TRUE,
              colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 

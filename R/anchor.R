@@ -1,3 +1,6 @@
+library(tidyr)
+library(ggplot2)
+
 library(SDModels)
 
 set.seed(42)
@@ -27,14 +30,6 @@ for(group in Groups){
   envs[which(pertLabel %in% test_pert)] <- group
 }
 
-#Groups <- unique(perturbations)
-#perturbations
-#envs <- rep(0, n)
-
-#for(group in Groups){
-#  envs[which(pertLabel %in% group)] <- group
-#}
-
 preds <- list.files("results/anchorG")
 res <- matrix(nrow = n, ncol = length(preds))
 gamma_vec <- rep(NA, length(preds))
@@ -45,61 +40,44 @@ for(i in 1:length(preds)){
   gamma_vec[i] <- gamma
 }
 
-gamma_vec
-
-
 mse <- apply(res, 2, function(resj) tapply(resj, as.factor(envs), mean))
 mse <- mse[-which(rownames(mse) == "0"), ]
-dim(mse)
-
-quantilevec <- 0.005*(1:199)
-
-
-#qPerf <- apply(mse, 2, quantile, probs = quantilevec)
 qPerf <- mse
 
 dfPerf <- data.frame(t(qPerf))
-#names(dfPerf) <- quantilevec
 names(dfPerf) <- rownames(mse)
-dfPerf$gamma <- gamma_vec
+dfPerf$gamma <- gamma_vec ** 2
 
+xseq <- seq(min(dfPerf$gamma), max(dfPerf$gamma), length.out = 10000)
+dfPerf_g <- gather(dfPerf, 'intervention', 'mse', -gamma)
+#dfPerf_g <- dfPerf_g[dfPerf_g$intervention == "#20", ]
 
-library(tidyr)
-library(ggplot2)
+fit <- stats::loess(`#20` ~ gamma, dfPerf)
+fitted <- predict(fit, newdata = data.frame(gamma = xseq))
+xseq[which.min(fitted)]
+data2 <- data.frame(mse = fitted, gamma = xseq)
 
-str(dfPerf)
-
-dfPerf_g <- gather(dfPerf, 'quantile', 'mse', -gamma)
-ggplot(dfPerf_g, aes(x = gamma, y = mse, group = quantile)) + 
+ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) + 
   theme_bw() + 
-  geom_line(col = rgb(0.2,0.2,0.2,0.8)) + 
-  geom_vline(xintercept = 1)
+  geom_smooth(xseq = xseq, se = FALSE, aes(linetype = intervention, col = intervention)) + 
+  geom_point(aes(col = intervention, shape = intervention)) + 
+  scale_shape_manual(values=0:7) +
+  #geom_line(data = data2, colour = "blue", group = "3") + 
+  geom_vline(xintercept = 1) +
+  ylab("OOB MSE") + xlab(expression(gamma))
+  # + coord_cartesian(ylim = c(6, 1), xlim = c(1, 4))
 
-quantilevec <- seq(0.01, 0.99, 0.02)
-mse <- apply(res, 2, function(resj) quantile(resj, quantilevec, na.rm = TRUE))
-qPerf <- mse
+mean_perf <- sapply(unique(envs), function(env) mean((Y[envs == env] - mean(Y[envs != env]))**2))
+mean_perf
 
-dfPerf <- data.frame(t(qPerf))
-#names(dfPerf) <- quantilevec
-names(dfPerf) <- rownames(mse)
-dfPerf$gamma <- gamma_vec
-gamma_vec
-dfPerf_g <- gather(dfPerf, 'quantile', 'mse', -gamma)
-ggplot(dfPerf_g, aes(x = gamma, y = mse, group = quantile)) + 
-  theme_bw() + 
-  geom_line(col = rgb(0.2,0.2,0.2,0.8)) + 
-  geom_vline(xintercept = 1)
 
-zero_model <- tapply(Y**2, envs, mean)
+load("results/anchorG_opt.RData")
+plot(log(fit_anchor$var_importance))
 
-zero_perf <- dfPerf
-zero_perf[, 1:8] <- t(t(dfPerf[, 1:8]) / c(zero_model[names(dfPerf)[1:8]]))
-zero_perf_g <- gather(zero_perf, 'quantile', 'mse', -gamma)
+fit_anchor <- fromList(fit_anchor)
+plot(fit_anchor)
 
-ggplot(zero_perf_g, aes(x = gamma, y = mse, group = quantile)) + 
-  theme_bw() + 
-  geom_line(col = rgb(0.2,0.2,0.2,0.8)) + 
-  geom_vline(xintercept = 1) + 
-  ggtitle('MSE/zero model')
+path <- regPath(fit_anchor)
+plot(path)
 
 
