@@ -13,7 +13,7 @@ P <- sapply(P, function(p) which(prot_names_short == strsplit(p, '[.]')[[1]][1])
 ##### Drug Effects ####
 load("results/DrugEffects.RData")
 
-P <- c(1:nrow(allPvecs))
+#P <- c(1:nrow(allPvecs))
 #P <- 1387
 
 # collect min p value of drug effect over proteins
@@ -172,9 +172,11 @@ class(HEC) <- "HivePlotData"
 
 chkHPD(HEC) # answer of FALSE means there are no problems
 
+png(filename="figures/hivePA.png", width = 1000, height = 700)
 plotHive(HEC, ch = 0.001, bkgnd = "white", 
          axLabs = c("24h", "6h", "48h"), 
          axLab.gpar = gpar(col = "black", fontsize = 24))
+dev.off()
 
 forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
              Source = "source", Target = "target",

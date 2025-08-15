@@ -1,23 +1,18 @@
 library(tidyr)
 library(ggplot2)
-
 library(SDModels)
 
 set.seed(42)
 
+# load and preprocess data
 source("R/utils.R")
-
 dat <- prepAggData()
-X <- as.matrix(dat$X)
 Y <- dat$Y
 A <- as.matrix(dat$A)
 p_names <- dat$p_names
 perturbations <- dat$perturbations
 pertLabel <- dat$pertLabel
 
-#hist(apply(X, 2, function(x)length(unique(x))), breaks = 1000)
-
-X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
 anchor_dose <- sapply(strsplit(perturbations, ' '), function(x) x[1])
 Groups <- unique(anchor_dose)
@@ -54,10 +49,11 @@ dfPerf_g <- gather(dfPerf, 'intervention', 'mse', -gamma)
 
 fit <- stats::loess(`#20` ~ gamma, dfPerf)
 fitted <- predict(fit, newdata = data.frame(gamma = xseq))
+# optimal gamma
 xseq[which.min(fitted)]
 data2 <- data.frame(mse = fitted, gamma = xseq)
 
-ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) + 
+ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) + 
   theme_bw() + 
   geom_smooth(xseq = xseq, se = FALSE, aes(linetype = intervention, col = intervention)) + 
   geom_point(aes(col = intervention, shape = intervention)) + 
@@ -67,8 +63,13 @@ ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) +
   ylab("OOB MSE") + xlab(expression(gamma))
   # + coord_cartesian(ylim = c(6, 1), xlim = c(1, 4))
 
+ggAnchor
+ggsave("figures/AnchorCV.jpeg")
+
 mean_perf <- sapply(unique(envs), function(env) mean((Y[envs == env] - mean(Y[envs != env]))**2))
 mean_perf
+
+
 
 
 load("results/anchorG_opt.RData")
@@ -78,6 +79,19 @@ fit_anchor <- fromList(fit_anchor)
 plot(fit_anchor)
 
 path <- regPath(fit_anchor)
-plot(path)
+most_imp <- fit_anchor$var_importance > sort(fit_anchor$var_importance, decreasing = TRUE)[20]
+
+plot(path, plotly = TRUE, most_imp)
 
 
+cp <- 0.095
+fit_anchor <- prune(fit_anchor, cp)
+plot(fit_anchor$var_importance)
+
+fit_anchor$var_names[fit_anchor$var_importance > 0]
+
+mostImp <- which.max(fit_anchor$var_importance)
+fit_anchor$var_names[mostImp]
+
+dep <- partDependence(fit_anchor, mostImp)
+plot(dep)
