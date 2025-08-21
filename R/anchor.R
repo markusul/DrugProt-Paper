@@ -72,26 +72,13 @@ mean_perf
 
 
 
-load("results/anchorG_opt.RData")
-plot(log(fit_anchor$var_importance))
+load("results/anchor_opt/var_importance.RData")
+plot(sort(var_importance, decreasing = T))
 
-fit_anchor <- fromList(fit_anchor)
-plot(fit_anchor)
-
-path <- regPath(fit_anchor)
-most_imp <- fit_anchor$var_importance > sort(fit_anchor$var_importance, decreasing = TRUE)[20]
-
-plot(path, plotly = TRUE, most_imp)
+load("results/anchor_opt/regPath.RData")
+plot(path)
 
 
-cp <- 0.095
-fit_anchor <- prune(fit_anchor, cp)
-plot(fit_anchor$var_importance)
 
-fit_anchor$var_names[fit_anchor$var_importance > 0]
-
-mostImp <- which.max(fit_anchor$var_importance)
-fit_anchor$var_names[mostImp]
-
-dep <- partDependence(fit_anchor, mostImp)
-plot(dep)
+plotOOB(path)
+path$cp_min
