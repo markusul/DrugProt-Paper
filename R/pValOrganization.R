@@ -53,6 +53,10 @@ Net <- lapply(c(24, 48), function(t){
                             method = "BH")
       net <- cbind(net, pval.corr) # add p values to network
       targets <- c(targets, prot_names_short[P]) # add response
+    }else{
+      net <- cbind(net, rep(0, length(prot_names_short)))
+      targets <- c(targets, prot_names_short[P])
+      print("missing experiment!")
     }
   }
   list(net, targets)
