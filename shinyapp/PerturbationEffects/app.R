@@ -60,7 +60,7 @@ server <- function(input, output) {
   # load data for Drug Effects
   load("../../results/DrugEffects.RData")
 
-  P_selection <- 1:15
+  P_selection <- 1:3
   print(prot_names_short[P_selection])
 
   # collect min p value of drug effect over proteins
@@ -74,7 +74,7 @@ server <- function(input, output) {
   
   # significance level for protein network
   alpha <- 0.05
-  alpha <- alpha / length(P_selection) / 3
+  alpha <- alpha / length(P_selection) / 2
   
   # transform p value to links using alpha
   Links_all <- lapply(Net, function(net){
@@ -83,54 +83,61 @@ server <- function(input, output) {
     if(length(res) == 0) return(NULL)
     for(i in 1:ncol(net[[1]])){
       if(length(res[[i]]) != 0)
-        links <- rbind(links, data.frame(res[[i]], which(net[[2]][i] == prot_names_short)))
+        links <- rbind(links, data.frame('source' = res[[i]], 'target' = which(net[[2]][i] == prot_names_short)))
     }
     rownames(links) <- 1:nrow(links)
     colnames(links) <- c('source', 'target')
     links
   })
-
+  
+  #select relevant protein
+  Links_all <- lapply(Links_all, function(links){
+    rel.Links <- links$source %in% P_selection | links$target %in% P_selection
+    links[rel.Links, ]
+  })
+  
   print("Prepare Summary Graph")
   
   Links_sum <- do.call(rbind, Links_all)
   Links_sum$source <- Links_sum$source - 1
   Links_sum$target <- Links_sum$target - 1
   Links_sum$value <- 1
-  Nodes_sum <- data.frame(name = prot_names_short, group = 1, size = 1)
-  P.ind <- P_selection - 1
+  
+  #P.ind <- P_selection - 1
 
   #add link to itself
   #Links_self <- data.frame(source = P.ind, target = P.ind, value = 1)
   #Links_sum <- rbind(Links_sum, Links_self)
 
-  rel.Links <- Links_sum$source %in% P.ind | Links_sum$target %in% P.ind
-  print(sum(rel.Links))
+  #rel.Links <- Links_sum$source %in% P.ind | Links_sum$target %in% P.ind
 
-  if(sum(rel.Links) == 0){
-    print("No relevant links found, using dummy links")
-    Links_sum <- data.frame(source = P.ind, target = P.ind, value = 1)
-  }else {
-    Links_sum <- Links_sum[rel.Links, ]
-  }
+  #if(sum(rel.Links) == 0){
+  #  print("No relevant links found, using dummy links")
+  #  Links_sum <- data.frame(source = P.ind, target = P.ind, value = 1)
+  #}else {
+  #  Links_sum <- Links_sum[rel.Links, ]
+  #}
   
-  rel.Nodes <- sort(unique(unlist(Links_sum[, c('source', 'target')])))
-  print(rel.Nodes)
-  Nodes_sum$group[P_selection] <- 2
-  Nodes_sum <- Nodes_sum[rel.Nodes+1, ]
+  rel.Nodes <- sort(unique(c(P_selection, unlist(Links_sum[, c('source', 'target')]))))
+  Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes], group = 1, size = 1)
+  Nodes_sum$group[rel.Nodes %in% P_selection] <- 2
   
   #reorganize link index
   for(i in 1:length(rel.Nodes)){
-    Links_sum[Links_sum == rel.Nodes[i]] <- i - 1
+    Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
   }
-  Links_sum$value <- 1
   
   # temporal graph
   print("Prepare Temporal Graph")
   expTimes <- c(6, 24, 48)
-  nodenames <- c(paste(prot_names_short, expTimes[1], sep = '_'), 
-                 paste(prot_names_short, expTimes[2], sep = '_'), 
-                 paste(prot_names_short, expTimes[3], sep = '_'))
-  nodegroups <- rep(paste0(expTimes, 'h'), each = length(prot_names_short))
+  rel6 <- sort(unique(c(P_selection, Links_all[[1]][, "source"])))
+  rel24 <- sort(unique(c(P_selection, Links_all[[1]][, "target"], Links_all[[2]][, "source"])))
+  rel48 <- sort(unique(c(P_selection, Links_all[[2]][, "target"])))
+  
+  nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
+                 paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
+                 paste(prot_names_short[rel48], expTimes[3], sep = '_'))
+  nodegroups <- rep(paste0(expTimes, "h"), times = c(length(rel6), length(rel24), length(rel48)))
   
   Links_temp <- lapply(1:2, function(t){
     links <- Links_all[[t]]
