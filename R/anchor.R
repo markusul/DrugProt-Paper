@@ -76,9 +76,14 @@ load("results/anchor_opt/var_importance.RData")
 plot(sort(var_importance, decreasing = T))
 
 load("results/anchor_opt/regPath.RData")
-plot(path)
-
+most_imp <- which(var_importance > 0.01)
+length(most_imp)
+plot(path, T, most_imp)
 
 
 plotOOB(path)
 path$cp_min
+
+
+
+
