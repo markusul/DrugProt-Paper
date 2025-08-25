@@ -73,17 +73,35 @@ mean_perf
 
 
 load("results/anchor_opt/var_importance.RData")
+plot(var_importance)
 plot(sort(var_importance, decreasing = T))
+imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
 
 load("results/anchor_opt/regPath.RData")
-most_imp <- which(var_importance > 0.01)
-length(most_imp)
-plot(path, T, most_imp)
+plot(path, sqrt_scale = T)
+cp <- which(path$cp == min(path$cp[path$cp > 0.5]))
+path_s <- which(path$varImp_path[cp, ] > 0)
 
+load("results/anchor_opt/stability_selection.RData")
+plot(stab, sqrt_scale = T)
+cp <- which(stab$cp == min(stab$cp[stab$cp > 0.5]))
+stab_s <- which(stab$varImp_path[cp, ] > 0)
 
-plotOOB(path)
-path$cp_min
+all(stab_s == path_s)
+sum(stab_s %in% imp_s)
 
+load('data/order.RData')
 
+imp_to_shortnames <- function(imp){
+  imp <- sapply(names(imp), function(p) {
+    sp <- strsplit(p, '_')[[1]]
+    paste(sp[-length(sp)], collapse =  "_")
+  })
+  prot_names_short[imp]
+}
 
+imp_s <- imp_to_shortnames(imp_s)       
+path_s <- imp_to_shortnames(path_s)
+stab_s <- imp_to_shortnames(stab_s)
 
+save(imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
