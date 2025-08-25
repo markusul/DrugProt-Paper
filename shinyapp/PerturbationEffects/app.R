@@ -59,8 +59,11 @@ server <- function(input, output) {
 
   # load data for Drug Effects
   load("../../results/DrugEffects.RData")
-
-  P_selection <- 1:3
+  
+  load("../../results/anchor_opt/proteinSelection.RData")
+  P_selection <- which(prot_names_short %in% path_s)
+  
+  #P_selection <- 10
   print(prot_names_short[P_selection])
 
   # collect min p value of drug effect over proteins
@@ -71,7 +74,7 @@ server <- function(input, output) {
   # Protein Network tab content
   print("Load Protein Network Data")
   load("../../results/proteinNetwork.RData")
-  
+
   # significance level for protein network
   alpha <- 0.05
   alpha <- alpha / length(P_selection) / 2
@@ -118,10 +121,10 @@ server <- function(input, output) {
   #  Links_sum <- Links_sum[rel.Links, ]
   #}
   
-  rel.Nodes <- sort(unique(c(P_selection, unlist(Links_sum[, c('source', 'target')]))))
-  Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes], group = 1, size = 1)
-  Nodes_sum$group[rel.Nodes %in% P_selection] <- 2
-  
+  rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
+  Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes+1], group = "Connected", size = 1)
+  Nodes_sum$group[rel.Nodes %in% (P_selection-1)] <- "Selected"
+
   #reorganize link index
   for(i in 1:length(rel.Nodes)){
     Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
@@ -133,6 +136,8 @@ server <- function(input, output) {
   rel6 <- sort(unique(c(P_selection, Links_all[[1]][, "source"])))
   rel24 <- sort(unique(c(P_selection, Links_all[[1]][, "target"], Links_all[[2]][, "source"])))
   rel48 <- sort(unique(c(P_selection, Links_all[[2]][, "target"])))
+  rel <- list(rel6, rel24, rel48)
+  lenRel <- c(0, length(rel6), length(rel24), length(rel48))
   
   nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
                  paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
@@ -141,36 +146,43 @@ server <- function(input, output) {
   
   Links_temp <- lapply(1:2, function(t){
     links <- Links_all[[t]]
-    links[, 1] <- links[, 1] + (t-1) * length(prot_names_short)
-    links[, 2] <- links[, 2] + (t) * length(prot_names_short)
+    
+    for(i in 1:length(rel[[t]])){
+      links[links[, 1] == rel[[t]][i], 1] <- i - 1 + sum(lenRel[1:t])
+    }
+    for(i in 1:length(rel[[t+1]])){
+      links[links[, 2] == rel[[t+1]][i], 2] <- i - 1 + sum(lenRel[1:(t+1)])
+    }
     links
   })
   Links_temp <- do.call(rbind, Links_temp)
-  used_nodes <- sort(unique(unname(unlist(Links_temp))))
   
-  Links_temp$source <- Links_temp$source - 1
-  Links_temp$target <- Links_temp$target - 1
+  #used_nodes <- sort(unique(unname(unlist(Links_temp))))
+  
+  #Links_temp$source <- Links_temp$source - 1
+  #Links_temp$target <- Links_temp$target - 1
   Links_temp$value <- 1
-  Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 1)
-  Nodes_temp$size[used_nodes] <- 100
-  Nodes_temp$radius <- as.numeric(rep(1:length(prot_names_short), 3))
+  Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.3)
+  #Nodes_temp$size[used_nodes] <- 100
+  #Nodes_temp$radius <- as.numeric(rep(1:length(prot_names_short), 3))
+  Nodes_temp$radius <- as.numeric(unlist(sapply(lenRel[-1], function(l) 1:l)))
   
-  P.ind <- unlist(lapply(P_selection, function(p) p + 0:2 * length(prot_names_short))) - 1
+  #P.ind <- unlist(lapply(P_selection, function(p) p + 0:2 * length(prot_names_short))) - 1
   #add link to itself
   #Links_self <- data.frame(source = P.ind, target = P.ind, value = 1)
   #Links_temp <- rbind(Links_temp, Links_self)
 
-  rel.Links <- Links_temp$source %in% P.ind | Links_temp$target %in% P.ind
-  Links_temp <- Links_temp[rel.Links, ]
+  #rel.Links <- Links_temp$source %in% P.ind | Links_temp$target %in% P.ind
+  #Links_temp <- Links_temp[rel.Links, ]
   
-  rel.Nodes <- sort(unique(unlist(Links_temp[, c('source', 'target')])))
-  Nodes_temp <- Nodes_temp[rel.Nodes+1, ]
+  #rel.Nodes <- sort(unique(unlist(Links_temp[, c('source', 'target')])))
+  #Nodes_temp <- Nodes_temp[rel.Nodes+1, ]
   
   #reorganize link index
-  for(i in 1:length(rel.Nodes)){
-    Links_temp[Links_temp == rel.Nodes[i]] <- i - 1
-  }
-  Links_temp$value <- 1
+  #for(i in 1:length(rel.Nodes)){
+  #  Links_temp[Links_temp == rel.Nodes[i]] <- i - 1
+  #}
+  #Links_temp$value <- 1
   
   print("prepare for HivePlot")
 
@@ -187,11 +199,12 @@ server <- function(input, output) {
   edges$weight <- 0.1
   
   #edges$color[(nrow(edges)-length(P_selection)*3):nrow(edges)] <- "white"
-
+  
   nodes <- Nodes_temp
-  nodes$size <- 0.01
+  #nodes$size <- 0.01
   names(nodes) <- c("lab", "axis", "size", "radius")
   #nodes$axis <- as.integer(as.numeric(nodes$axis == "24h") + 1)
+  
   nodes$axis[nodes$axis == "6h"] <- 2
   nodes$axis[nodes$axis == "24h"] <- 1
   nodes$axis[nodes$axis == "48h"] <- 3
@@ -315,7 +328,7 @@ server <- function(input, output) {
                  Value = "value", NodeID = "name",
                  Group = "group", opacity = 0.99, 
                  arrows = T, zoom = T, charge = -5,
-                 opacityNoHover = TRUE,
+                 opacityNoHover = TRUE, legend = T,
                  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
     fN
   })
