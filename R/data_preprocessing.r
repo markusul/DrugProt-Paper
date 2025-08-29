@@ -8,6 +8,11 @@ na_imputation <- function(x){
 
 dat <- read.csv('data/ProteinMatrix_sampleID_MapEC50_20240229.csv')
 
+# create drug lookup for drugnames
+drugnames <- unique(dat[, c('pert_iname', 'pert_id')])
+drug_lookup <- setNames(drugnames$pert_iname, drugnames$pert_id)
+save(drug_lookup, file = "data/drugLookup.RData")
+
 plot(log(dat[, P]), col = as.factor(dat$machine))
 
 # why are the no IC50 values for some single drug experiments?
