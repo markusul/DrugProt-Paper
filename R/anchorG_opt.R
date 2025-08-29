@@ -1,4 +1,3 @@
-args = commandArgs(trailingOnly = TRUE)
 set.seed(42)
 start_time <- Sys.time()
 
@@ -11,8 +10,6 @@ A <- as.matrix(dat$A)
 p_names <- dat$p_names
 perturbations <- dat$perturbations
 pertLabel <- dat$pertLabel
-
-#hist(apply(X, 2, function(x)length(unique(x))), breaks = 1000)
 
 X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
@@ -32,16 +29,14 @@ names(trees_envs) <- levels(envs)
 trees_envs['0'] <- 0
 
 library(SDModels)
-gamma_seq <- c(0.0000001, 0.3, 0.6, seq(1, 4, 0.2))
 
-gamma <- gamma_seq[as.numeric(args[1])]
+# optimal gamma from cross-validation
+gamma <- 3.443544
 
-fit_anchor <- SDForest(x = X, y = Y, A = A, envs = envs, nTree_leave_out = trees_envs,
-                       Q_type = "no_deconfounding", gamma = gamma ** 2, cp = 0, mc.cores = 20, gpu = F)
-
-pred <- fit_anchor$ooEnv_predictions
-re <- (Y - pred)**2
-save(re, gamma, file = paste0("results/anchorG/resid_", args[1], ".RData"))
+fit_anchor <- SDForest(x = X, y = Y, A = A, nTree = 10,
+                       Q_type = "no_deconfounding", gamma = gamma, cp = 0, mc.cores = 20, gpu = F)
+fit_anchor <- toList(fit_anchor)
+save(fit_anchor, gamma, file = paste0("results/anchorG_opt.RData"))
 
 end_time <- Sys.time()
 cat("Time taken:", end_time - start_time, "\n")

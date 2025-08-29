@@ -1,5 +1,6 @@
-library(hdi)
+start_time <- Sys.time()
 
+library(hdi)
 RNGkind("L'Ecuyer-CMRG")
 set.seed(22)
 
@@ -44,6 +45,10 @@ lapply(expTimes, function(t){
     sum(is.na(aggData[[laggedTime]]))
     sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
+
+    # differential expression to baseline
+    protein_design <- protein_design - datI[datI$pert_time == t, paste0(prot_names, "_0")]
+    colnames(protein_design) <- prot_names
     
     design <- cbind(design, protein_design)
     
@@ -63,41 +68,24 @@ lapply(expTimes, function(t){
   #hdi fit with robustness against model misspecifications
   fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
   
-  #save model
-  #save(file = paste0('models/', which(prot_names == P) , '_', t, '.RData'), fit)
-  
   # apply group testing for each treatments (intercept and effect)
-  #pMat <- matrix(NA, nrow = ncol(D), ncol = ncol(D))
-  #rownames(pMat) <- colnames(pMat) <- dLabels[1:ncol(D)]
-  #for(l in dLabels_measured){
-    # use conservative = FALSE because this would correct also using the number of protein effects
-  #  pval.drugs <- fit$groupTest(which(dlabels_model == l), conservative = TRUE)
-    #pval <- min(1, pval * length(dLabels_measured)) # bonferroni correction with the number of groups
-  #  drugs <- strsplit(l, ":")[[1]]
-  #  if(length(drugs) == 1) drugs <- c(drugs, drugs)
-  #  pMat[drugs[1], drugs[2]] <- pval.drugs 
-  #  pMat[drugs[2], drugs[1]] <- pval.drugs
-  #}
   nDrugs <- ncol(D)
-  pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = TRUE)})
+  pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = FALSE)})
   save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', t, '.RData'), 
        pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, t)
   
   # collect p values for protein effects
-  pval.corr <- NULL
   pval <- NULL
   
   if(laggedTime > 0){ # return p values for protein effects
-    pval.corr <- fit$pval.corr
-    pval.corr <- pval.corr[(length(dlabels_model)+1):length(pval.corr)]
-    
     pval <- fit$pval
     pval <- pval[(length(dlabels_model)+1):length(pval)]
   }
-  save(file = paste0('resutls/ProteinEffects/', which(prot_names == P) , '_', t, '.RData'), 
+  save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', t, '.RData'), 
        pval, prot_names, P, t)
 })
 })
 
 print("finished!")
-
+end_time <- Sys.time()
+print(end_time - start_time)

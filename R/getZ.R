@@ -2,7 +2,9 @@ args = commandArgs(trailingOnly = TRUE)
 start_time <- Sys.time()
 
 library(hdi)
+RNGkind("L'Ecuyer-CMRG")
 set.seed(22)
+
 load("data/laggedData.RData")
 expTimes <- c(6, 24, 48)
 
@@ -44,6 +46,10 @@ if(laggedTime > 0){
   sum(is.na(aggData[[laggedTime]]))
   sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
   protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
+
+  # differential expression to baseline
+  protein_design <- protein_design - datI[datI$pert_time == t, paste0(prot_names, "_0")]
+  colnames(protein_design) <- prot_names
   
   design <- cbind(design, protein_design)
   
