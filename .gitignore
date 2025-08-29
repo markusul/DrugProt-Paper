@@ -2,8 +2,10 @@
 /slurm
 /outfiles
 /results
+/results_old
 /models
 /Z
+/Z_old
 /pvals
 /figures
 
