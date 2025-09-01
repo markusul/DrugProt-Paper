@@ -30,7 +30,7 @@ var_importance <- fit_anchor$var_importance
 save(var_importance, file = "results/anchor_opt/var_importance_pruned.RData")
 
 
-most_imp <- which(fit_anchor$var_importance > sort(fit_anchor$var_importance, decreasing = TRUE)[3])
+most_imp <- which(fit_anchor$var_importance >= sort(fit_anchor$var_importance, decreasing = TRUE)[3])
 
 print("partial dependence")
 dep1 <- partDependence(fit_anchor, most_imp[1])

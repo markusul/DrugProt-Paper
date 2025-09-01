@@ -76,13 +76,21 @@ lapply(expTimes, function(t){
   
   # collect p values for protein effects
   pval <- NULL
+  bhat <- NULL
+  betahat <- NULL
   
   if(laggedTime > 0){ # return p values for protein effects
     pval <- fit$pval
     pval <- pval[(length(dlabels_model)+1):length(pval)]
+
+    bhat <- fit$bhat
+    bhat <- bhat[(length(dlabels_model)+1):length(bhat)]
+
+    betahat <- fit$betahat
+    betahat <- betahat[(length(dlabels_model)+1):length(betahat)]
   }
   save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', t, '.RData'), 
-       pval, prot_names, P, t)
+       pval, prot_names, P, t, bhat, betahat)
 })
 })
 
