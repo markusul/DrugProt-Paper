@@ -71,8 +71,13 @@ lapply(expTimes, function(t){
   # apply group testing for each treatments (intercept and effect)
   nDrugs <- ncol(D)
   pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = FALSE)})
+  effects.drugs <- lapply(dLabels_measured, function(l){fit$betahat[which(dlabels_model == l)]})
+  names(effects.drugs) <- dLabels_measured
+  effects.drugs.debiased <- lapply(dLabels_measured, function(l){fit$bhat[which(dlabels_model == l)]})
+  names(effects.drugs.debiased) <- dLabels_measured
+
   save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', t, '.RData'), 
-       pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, t)
+       pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, t, effects.drugs, effects.drugs.debiased)
   
   # collect p values for protein effects
   pval <- NULL
