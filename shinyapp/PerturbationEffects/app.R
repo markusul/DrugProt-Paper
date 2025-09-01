@@ -4,6 +4,23 @@ library(plotly)
 library(networkD3)
 library(HiveR)
 require("grid")
+library(readxl)
+library(shinyWidgets)
+
+
+# replace drug ids by names
+load('../../data/drugLookup.RData')
+replace_drug_ids <- function(x) {
+  ids <- strsplit(x, "_|`")[[1]]
+  ids <- ids[grepl("#", ids)]
+  names <- sapply(ids, function(id) drug_lookup[[id]])
+  paste(names, collapse = ":")
+}
+
+# load ordering of drugs (sort drugs with experiments together)
+load('../../data/order.RData')
+nDrugs <- length(drugOrder)
+drugOrder <- sapply(drugOrder, replace_drug_ids)
 
 ui <- dashboardPage(
   dashboardHeader(title = "Drug Perturbations"),
@@ -16,15 +33,34 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tabItems(
+      tabItem(tabName = "Settings", 
+              h2("Settings"),
+              fluidRow(
+                box(title = "Select Proteins of Interest", status = "primary", solidHeader = TRUE,
+                    pickerInput("protSet", "Select Protein Set", 
+                                choices = unname(prot_names_short), 
+                                multiple = TRUE, 
+                                options = list(`actions-box` = TRUE, `live-search`=TRUE)),
+                    actionButton("preSelected", "pre Selected Set"),
+                    actionButton("clear", "Clear Selection"), 
+                    fileInput("file", "Upload .txt File with Protein Names (one per line)", accept = c(".txt")),
+                    h3("p-value Adjustments"),
+                    numericInput("alpha", "Significance Level", value = 0.05, min = 0, max = 1, step = 0.0001),
+                    width = 6),
+                
+                box(title = "Selected Proteins", status = "primary", solidHeader = TRUE,
+                    tableOutput("selectedTable"), width = 6)
+              )
+      ),
       tabItem(tabName = "DrugEffects", 
               h2("Drug Effects"),
               fluidRow(
                 box(title = "Drug Effect Heatmap", status = "primary", solidHeader = TRUE,
-                    plotlyOutput("plot1", height = 800), width = 8),
+                    plotlyOutput("plotDrugEffects", height = 800), width = 6),
                 box(title = "Significant Single Drugs", status = "primary", solidHeader = TRUE,
-                    tableOutput("table1"), width = 2),
+                    tableOutput("singleDrugs"), width = 3),
                 box(title = "Significant Drug Interactions", status = "primary", solidHeader = TRUE,
-                    tableOutput("table2"), width = 2)
+                    tableOutput("interactions"), width = 3)
               )
       ),
       tabItem(tabName = "ProteinNetwork", 
@@ -51,189 +87,173 @@ ui <- dashboardPage(
 )
 
 server <- function(input, output) {
+  # control panel
   print("Start Server")
   
-  # load ordering of drugs (sort drugs with experiments together)
-  load('../../data/order.RData')
-  nDrugs <- length(drugOrder)
-
   # load data for Drug Effects
   load("../../results/DrugEffects.RData")
-  
   load("../../results/anchor_opt/proteinSelection.RData")
-  P_selection <- which(prot_names_short %in% path_s)
-  
-  #P_selection <- 10
-  print(prot_names_short[P_selection])
-
-  # collect min p value of drug effect over proteins
-  pvec <- apply(matrix(allPvecs[P_selection, ], nrow = length(P_selection)), 2, min)
-  pvec <- pmin(pvec * length(P_selection), 1)
-  names(pvec) <- colnames(allPvecs)
-  
-  # Protein Network tab content
-  print("Load Protein Network Data")
   load("../../results/proteinNetwork.RData")
 
-  # significance level for protein network
-  alpha <- 0.05
-  alpha <- alpha / length(P_selection) / 2
-  
-  # transform p value to links using alpha
-  Links_all <- lapply(Net, function(net){
-    res <- apply(net[[1]], 2, function(pval) which(pval < alpha))
-    links <- NULL
-    if(length(res) == 0) return(NULL)
-    for(i in 1:ncol(net[[1]])){
-      if(length(res[[i]]) != 0)
-        links <- rbind(links, data.frame('source' = res[[i]], 'target' = which(net[[2]][i] == prot_names_short)))
-    }
-    rownames(links) <- 1:nrow(links)
-    colnames(links) <- c('source', 'target')
-    links
+
+  observeEvent(input$preSelected, {
+    updatePickerInput(session = getDefaultReactiveDomain(), inputId = "protSet", selected = prot_names_short[prot_names_short %in% path_s])
   })
-  
-  #select relevant protein
-  Links_all <- lapply(Links_all, function(links){
-    rel.Links <- links$source %in% P_selection | links$target %in% P_selection
-    links[rel.Links, ]
+  observeEvent(input$clear, {
+    updatePickerInput(session = getDefaultReactiveDomain(), inputId = "protSet", selected = character(0))
   })
-  
-  print("Prepare Summary Graph")
-  
-  Links_sum <- do.call(rbind, Links_all)
-  Links_sum$source <- Links_sum$source - 1
-  Links_sum$target <- Links_sum$target - 1
-  Links_sum$value <- 1
-  
-  #P.ind <- P_selection - 1
+  observeEvent(input$file, {
+    req(input$file)
+    prot_upload <- readLines(input$file$datapath)
+    prot_upload <- prot_upload[prot_upload %in% prot_names_short]
+    updatePickerInput(session = getDefaultReactiveDomain(), inputId = "protSet", selected = prot_upload)
+  })
+  P_selection <- reactive({
+    sel <- which(prot_names_short %in% input$protSet)
+    if(length(sel) == 0) return(NULL)
+    sel
+  })
 
-  #add link to itself
-  #Links_self <- data.frame(source = P.ind, target = P.ind, value = 1)
-  #Links_sum <- rbind(Links_sum, Links_self)
+  pvec <- reactive({
+    # collect min p value of drug effect over proteins
+    pvec <- apply(matrix(allPvecs[P_selection(), ], nrow = length(P_selection())), 2, min)
+    pvec <- pmin(pvec * length(P_selection()), 1)
+    names(pvec) <- colnames(allPvecs)
 
-  #rel.Links <- Links_sum$source %in% P.ind | Links_sum$target %in% P.ind
+    # Apply to all names in pvec
+    replace_drug_ids(names(pvec)[2])
+    names(pvec) <- sapply(names(pvec), replace_drug_ids)
+    pvec
+  })
+  Links_all <- reactive({
+    if(is.null(P_selection())) return(NULL)
 
-  #if(sum(rel.Links) == 0){
-  #  print("No relevant links found, using dummy links")
-  #  Links_sum <- data.frame(source = P.ind, target = P.ind, value = 1)
-  #}else {
-  #  Links_sum <- Links_sum[rel.Links, ]
-  #}
+    # transform p value to links using alpha
+    Links_all <- lapply(Net, function(net) {
+      pvals <- net[[1]]
+      targets <- match(net[[2]], prot_names_short)
+      # Find all (row, col) pairs where pval < alpha
+      idx <- which(pvals < (input$alpha / length(P_selection()) / 2), arr.ind = TRUE)
+      if(nrow(idx) == 0) return(NULL)
+      # Map columns to targets
+      links <- data.frame(
+        source = idx[, 1],
+        target = targets[idx[, 2]]
+      )
+      rownames(links) <- seq_len(nrow(links))
+      colnames(links) <- c("source", "target")
+      links
+    })
+
+    #select relevant links from or to selected proteins
+    Links_all <- lapply(Links_all, function(links){
+      rel.Links <- links$source %in% P_selection() | links$target %in% P_selection()
+      links[rel.Links, ]
+    })
+    if(is.null(do.call(rbind, Links_all))) return(NULL)
+    Links_all
+  })
+
+  SummGraph <- reactive({
+    if(is.null(Links_all())) return(NULL)
+    Links_sum <- do.call(rbind, Links_all())
+    Links_sum$source <- Links_sum$source - 1
+    Links_sum$target <- Links_sum$target - 1
+    Links_sum$value <- 1
   
-  rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
-  Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes+1], group = "Connected", size = 1)
-  Nodes_sum$group[rel.Nodes %in% (P_selection-1)] <- "Selected"
+    rel.Nodes <- sort(unique(c(P_selection()-1, unlist(Links_sum[, c('source', 'target')]))))
+    Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes+1], group = "Connected", size = 1)
+    Nodes_sum$group[rel.Nodes %in% (P_selection()-1)] <- "Selected"
 
-  #reorganize link index
-  for(i in 1:length(rel.Nodes)){
-    Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
-  }
+    #reorganize link index
+    for(i in 1:length(rel.Nodes)){
+      Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
+    } 
+    list(Links_sum = Links_sum, Nodes_sum = Nodes_sum)
+  })
   
   # temporal graph
-  print("Prepare Temporal Graph")
-  expTimes <- c(6, 24, 48)
-  rel6 <- sort(unique(c(P_selection, Links_all[[1]][, "source"])))
-  rel24 <- sort(unique(c(P_selection, Links_all[[1]][, "target"], Links_all[[2]][, "source"])))
-  rel48 <- sort(unique(c(P_selection, Links_all[[2]][, "target"])))
-  rel <- list(rel6, rel24, rel48)
-  lenRel <- c(0, length(rel6), length(rel24), length(rel48))
-  
-  nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
-                 paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
-                 paste(prot_names_short[rel48], expTimes[3], sep = '_'))
-  nodegroups <- rep(paste0(expTimes, "h"), times = c(length(rel6), length(rel24), length(rel48)))
-  
-  Links_temp <- lapply(1:2, function(t){
-    links <- Links_all[[t]]
+  TempGraph <- reactive({
+    #if(is.null(Links_all())) return(NULL)
+    expTimes <- c(6, 24, 48)
+    rel6 <- sort(unique(c(P_selection(), Links_all()[[1]][, "source"])))
+    rel24 <- sort(unique(c(P_selection(), Links_all()[[1]][, "target"], Links_all()[[2]][, "source"])))
+    rel48 <- sort(unique(c(P_selection(), Links_all()[[2]][, "target"])))
+    rel <- list(rel6, rel24, rel48)
+    lenRel <- c(0, length(rel6), length(rel24), length(rel48))
     
-    for(i in 1:length(rel[[t]])){
-      links[links[, 1] == rel[[t]][i], 1] <- i - 1 + sum(lenRel[1:t])
+    nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
+                   paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
+                   paste(prot_names_short[rel48], expTimes[3], sep = '_'))
+    nodegroups <- rep(paste0(expTimes, "h"), times = c(length(rel6), length(rel24), length(rel48)))
+    
+    if(is.null(Links_all())){
+      Links_temp <- data.frame(source = 0, target = 0, value = 1)
+    }else{
+      Links_temp <- lapply(1:2, function(t){
+        links <- Links_all()[[t]]
+        for(i in 1:length(rel[[t]])){
+          links[links[, 1] == rel[[t]][i], 1] <- i - 1 + sum(lenRel[1:t])
+        }
+        for(i in 1:length(rel[[t+1]])){
+          links[links[, 2] == rel[[t+1]][i], 2] <- i - 1 + sum(lenRel[1:(t+1)])
+        }
+        links
+      })
+      Links_temp <- do.call(rbind, Links_temp)
+      Links_temp$value <- 1
     }
-    for(i in 1:length(rel[[t+1]])){
-      links[links[, 2] == rel[[t+1]][i], 2] <- i - 1 + sum(lenRel[1:(t+1)])
-    }
-    links
+    
+    Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.3)
+    Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
+    list(Links_temp = Links_temp, Nodes_temp = Nodes_temp)
   })
-  Links_temp <- do.call(rbind, Links_temp)
   
-  #used_nodes <- sort(unique(unname(unlist(Links_temp))))
-  
-  #Links_temp$source <- Links_temp$source - 1
-  #Links_temp$target <- Links_temp$target - 1
-  Links_temp$value <- 1
-  Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.3)
-  #Nodes_temp$size[used_nodes] <- 100
-  #Nodes_temp$radius <- as.numeric(rep(1:length(prot_names_short), 3))
-  Nodes_temp$radius <- as.numeric(unlist(sapply(lenRel[-1], function(l) 1:l)))
-  
-  #P.ind <- unlist(lapply(P_selection, function(p) p + 0:2 * length(prot_names_short))) - 1
-  #add link to itself
-  #Links_self <- data.frame(source = P.ind, target = P.ind, value = 1)
-  #Links_temp <- rbind(Links_temp, Links_self)
+  Hive <- reactive({
+    if(is.null(Links_all())) return(NULL)
+    edges <- TempGraph()$Links_temp
+    edges[, 1:2] <- edges[, 1:2] + 1
+    names(edges) <- c("id1", "id2", "weight")
+    row.names(edges) <- NULL
+    edges$id1 <- as.integer(edges$id1)
+    edges$id2 <- as.integer(edges$id2)
+    edges$color <- "black"
+    edges$weight <- 0.1
+    nodes <- TempGraph()$Nodes_temp
+    names(nodes) <- c("lab", "axis", "size", "radius")
 
-  #rel.Links <- Links_temp$source %in% P.ind | Links_temp$target %in% P.ind
-  #Links_temp <- Links_temp[rel.Links, ]
+    nodes$axis[nodes$axis == "6h"] <- 2
+    nodes$axis[nodes$axis == "24h"] <- 1
+    nodes$axis[nodes$axis == "48h"] <- 3
+    nodes$axis <- as.integer(nodes$axis)
+    nodes$id <- 1:nrow(nodes)
+    nodes$radius <- nodes$radius * 3
+    nodes$color <- "black"
   
-  #rel.Nodes <- sort(unique(unlist(Links_temp[, c('source', 'target')])))
-  #Nodes_temp <- Nodes_temp[rel.Nodes+1, ]
-  
-  #reorganize link index
-  #for(i in 1:length(rel.Nodes)){
-  #  Links_temp[Links_temp == rel.Nodes[i]] <- i - 1
-  #}
-  #Links_temp$value <- 1
-  
-  print("prepare for HivePlot")
+    HEC <- list()
+    HEC$nodes <- nodes
+    HEC$edges <- edges
+    HEC$type <- "2D"
+    HEC$desc <- "HairEyeColor data set"
+    HEC$axis.cols <- c("grey", "grey")
+    class(HEC) <- "HivePlotData" 
+    HEC
+  })
 
-  edges <- Links_temp
-  edges[, 1:2] <- edges[, 1:2] + 1
+  output$selectedTable <- renderTable({
+    if(length(P_selection()) == 0) return(NULL)
+    data.frame(Proteins = prot_names_short[P_selection()], stringsAsFactors = FALSE)
+  })
 
-  #edges[(nrow(edges)-length(P_selection)*3):nrow(edges), 2] <- c(2:(length(P_selection)*3), 1)
-  names(edges) <- c("id1", "id2", "weight")
-  # color
-  row.names(edges) <- NULL
-  edges$id1 <- as.integer(edges$id1)
-  edges$id2 <- as.integer(edges$id2)
-  edges$color <- "black"
-  edges$weight <- 0.1
-  
-  #edges$color[(nrow(edges)-length(P_selection)*3):nrow(edges)] <- "white"
-  
-  nodes <- Nodes_temp
-  #nodes$size <- 0.01
-  names(nodes) <- c("lab", "axis", "size", "radius")
-  #nodes$axis <- as.integer(as.numeric(nodes$axis == "24h") + 1)
-  
-  nodes$axis[nodes$axis == "6h"] <- 2
-  nodes$axis[nodes$axis == "24h"] <- 1
-  nodes$axis[nodes$axis == "48h"] <- 3
-  nodes$axis <- as.integer(nodes$axis)
-  nodes$id <- 1:nrow(nodes)
-  nodes$radius <- nodes$radius * 3
-  nodes$color <- "black"
-  #nodes$color <- c("black", "red", "blue", "green", "violet", "yellow", "darkgreen")[clusters]
-  #rep(c("black", "red", "blue", "green", "violet", "yellow", "darkgreen"), times = as.numeric(table(clusters)))
-  
-  
-  HEC <- list()
-  HEC$nodes <- nodes
-  HEC$edges <- edges
-  HEC$type <- "2D"
-  HEC$desc <- "HairEyeColor data set"
-  HEC$axis.cols <- c("grey", "grey")
-  class(HEC) <- "HivePlotData" 
-
-  print("Data loaded and processed")
-
-  output$plot1 <- renderPlotly({
+  output$plotDrugEffects <- renderPlotly({
+    if(length(P_selection()) == 0) return(NULL)
     pMat <- matrix(NA, nrow = nDrugs, ncol = nDrugs)
-    rownames(pMat) <- colnames(pMat) <- names(pvec)[1:nDrugs]
-    for(l in names(pvec)){
+    rownames(pMat) <- colnames(pMat) <- names(pvec())[1:nDrugs]
+    for(l in names(pvec())){
       drugs <- strsplit(l, ":")[[1]]
       if(length(drugs) == 1) drugs <- c(drugs, drugs)
-      pMat[drugs[1], drugs[2]] <- pvec[l]
-      pMat[drugs[2], drugs[1]] <- pvec[l]
+      pMat[drugs[1], drugs[2]] <- pvec()[l]
+      pMat[drugs[2], drugs[1]] <- pvec()[l]
     }
 
     pMat <- as.matrix(pMat)
@@ -242,13 +262,14 @@ server <- function(input, output) {
 
     ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
                   type = "heatmap", colors = "Greys") %>%
-                  layout(title = prot_names_short[P_selection])
+                  layout(title = prot_names_short[P_selection()])
     ht
   })
 
-  output$table1 <- renderUI({
-    singleInd <- sapply(names(pvec), function(l) length(strsplit(l, ":")[[1]]) == 1)
-    pvec_single <- pvec[singleInd]
+  output$singleDrugs <- renderUI({
+    if(length(P_selection()) == 0) return(NULL)
+    singleInd <- sapply(names(pvec()), function(l) length(strsplit(l, ":")[[1]]) == 1)
+    pvec_single <- pvec()[singleInd]
     pvec_single <- pvec_single[order(pvec_single)]
     if(length(pvec_single) == 0) return(NULL)
     df <- data.frame(Drug = names(pvec_single), PValue = pvec_single, stringsAsFactors = FALSE)
@@ -257,7 +278,7 @@ server <- function(input, output) {
       paste(
         sapply(1:nrow(df), function(i) {
           pv <- df$PValue[i]
-            color <- ifelse(pv < 0.05, ' style="background-color: #add8e6;"', '')
+            color <- ifelse(pv < input$alpha, ' style="background-color: #add8e6;"', '')
           paste0('<tr><td', color, '>', df$Drug[i], '</td><td', color, '>', format(pv, digits = 4), '</td></tr>')
         }),
         collapse = ""
@@ -267,9 +288,10 @@ server <- function(input, output) {
     HTML(htmlTable)
   })
 
-  output$table2 <- renderUI({
-    interactionInd <- sapply(names(pvec), function(l) length(strsplit(l, ":")[[1]]) > 1)
-    pvec_interaction <- pvec[interactionInd]
+  output$interactions <- renderUI({
+    if(length(P_selection()) == 0) return(NULL)
+    interactionInd <- sapply(names(pvec()), function(l) length(strsplit(l, ":")[[1]]) > 1)
+    pvec_interaction <- pvec()[interactionInd]
     pvec_interaction <- pvec_interaction[order(pvec_interaction)]
     if(length(pvec_interaction) == 0) return(NULL)
     df <- data.frame(DrugInteraction = names(pvec_interaction), PValue = pvec_interaction, stringsAsFactors = FALSE)
@@ -278,7 +300,7 @@ server <- function(input, output) {
       paste(
         sapply(1:nrow(df), function(i) {
           pv <- df$PValue[i]
-            color <- ifelse(pv < 0.05, ' style="background-color: #add8e6;"', '')
+            color <- ifelse(pv < input$alpha, ' style="background-color: #add8e6;"', '')
           paste0('<tr><td', color, '>', df$DrugInteraction[i], '</td><td', color, '>', format(pv, digits = 4), '</td></tr>')
         }),
         collapse = ""
@@ -289,22 +311,31 @@ server <- function(input, output) {
   })
 
   output$numProteinEffects <- renderTable({
-    P_sel_inNodes <- which(Nodes_sum$name %in% prot_names_short[P_selection])
-    df <- sapply(P_sel_inNodes - 1, function(i) {
-      Protein <- Nodes_sum$name[i + 1]
-      Children <- sum(Links_sum$source == i)#-1
-      Parents <- sum(Links_sum$target == i)#-1
-      df <- data.frame(Protein = Protein, numParents = Parents, num.Children = Children)
+    if(length(P_selection()) == 0) return(NULL)
+    if(is.null(SummGraph())){
+      df <- data.frame(Protein = prot_names_short[P_selection()], 
+                       num.Parents = integer(1), num.Children = integer(1))
+      return(df)
+    }
+    
+    P_sel_inNodes <- which(SummGraph()$Nodes_sum$name %in% prot_names_short[P_selection()])
+    df <- lapply(P_sel_inNodes - 1, function(i) {
+      Protein <- SummGraph()$Nodes_sum$name[i + 1]
+      Children <- sum(SummGraph()$Links_sum$source == i)#-1
+      Parents <- sum(SummGraph()$Links_sum$target == i)#-1
+      df <- data.frame(Protein = Protein, num.Parents = Parents, num.Children = Children)
       return(df)
     })
-    t(df)
+    df <- do.call(rbind, df)
+    df
   })
 
   output$ProteinEffects <- renderTable({
-    P_sel_inNodes <- which(Nodes_sum$name %in% prot_names_short[P_selection])
+    if(length(P_selection()) == 0) return(NULL)
+    P_sel_inNodes <- which(SummGraph()$Nodes_sum$name %in% prot_names_short[P_selection()])
     fam <- lapply(P_sel_inNodes - 1, function(i) {
-      Children <- Nodes_sum$name[Links_sum$target[Links_sum$source == i & Links_sum$target != i] + 1]
-      Parents <- Nodes_sum$name[Links_sum$source[Links_sum$target == i & Links_sum$source != i] + 1]
+      Children <- SummGraph()$Nodes_sum$name[SummGraph()$Links_sum$target[SummGraph()$Links_sum$source == i & SummGraph()$Links_sum$target != i] + 1]
+      Parents <- SummGraph()$Nodes_sum$name[SummGraph()$Links_sum$source[SummGraph()$Links_sum$target == i & SummGraph()$Links_sum$source != i] + 1]
       return(list(Children = Children, Parents = Parents))
     })
 
@@ -323,6 +354,16 @@ server <- function(input, output) {
   })
 
   output$SummaryGraph <- renderForceNetwork({
+    if(is.null(P_selection())) return(NULL)
+    
+    if(is.null(SummGraph())){
+      Links_sum <- data.frame(source = 0, target = 0, value = 1)
+      Nodes_sum <- data.frame(name = prot_names_short[P_selection()], group = "Selected", size = 1)
+    }else{
+      Links_sum <- SummGraph()$Links_sum
+      Nodes_sum <- SummGraph()$Nodes_sum
+    }
+
     fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                  Source = "source", Target = "target",
                  Value = "value", NodeID = "name",
@@ -334,13 +375,15 @@ server <- function(input, output) {
   })
 
   output$HivePlot <- renderPlot({
-    plotHive(HEC, ch = 0.001, bkgnd = "white", 
+    if(is.null(Links_all())) return(NULL)
+    plotHive(Hive(), ch = 0.001, bkgnd = "white", 
              axLabs = c("24h", "6h", "48h"), 
              axLab.gpar = gpar(col = "black", fontsize = 24))
   })
 
   output$TemporalGraph <- renderForceNetwork({
-    fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
+    if(is.null(P_selection())) return(NULL)
+    fN <- forceNetwork(Links = TempGraph()$Links_temp, Nodes = TempGraph()$Nodes_temp,
              Source = "source", Target = "target",
              Value = "value", NodeID = "name",
              Group = "group", opacity = 0.99,# Nodesize = 3,

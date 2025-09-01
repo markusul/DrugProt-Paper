@@ -60,7 +60,7 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) +
   scale_shape_manual(values=0:7) +
   #geom_line(data = data2, colour = "blue", group = "3") + 
   geom_vline(xintercept = 1) +
-  ylab("OOB MSE") + xlab(expression(gamma))
+  ylab("OOD MSE") + xlab(expression(gamma))
   # + coord_cartesian(ylim = c(6, 1), xlim = c(1, 4))
 
 ggAnchor
