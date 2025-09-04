@@ -3,7 +3,7 @@ library(shinydashboard)
 library(plotly)
 library(networkD3)
 library(HiveR)
-require("grid")
+library(grid)
 library(readxl)
 library(shinyWidgets)
 
@@ -121,7 +121,6 @@ server <- function(input, output) {
     names(pvec) <- colnames(allPvecs)
 
     # Apply to all names in pvec
-    replace_drug_ids(names(pvec)[2])
     names(pvec) <- sapply(names(pvec), replace_drug_ids)
     pvec
   })
@@ -368,7 +367,7 @@ server <- function(input, output) {
                  Source = "source", Target = "target",
                  Value = "value", NodeID = "name",
                  Group = "group", opacity = 0.99, 
-                 arrows = T, zoom = T, charge = -5,
+                 arrows = T, zoom = T, charge = -20,
                  opacityNoHover = TRUE, legend = T,
                  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
     fN
@@ -387,7 +386,7 @@ server <- function(input, output) {
              Source = "source", Target = "target",
              Value = "value", NodeID = "name",
              Group = "group", opacity = 0.99,# Nodesize = 3,
-             arrows = T, zoom = T, legend=T, charge = -5,
+             arrows = T, zoom = T, legend=T, charge = -15,
              opacityNoHover = TRUE,
              colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
     fN
