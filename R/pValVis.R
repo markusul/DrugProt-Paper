@@ -6,6 +6,12 @@ library(htmlwidgets)
 library(HiveR)
 library(grid)
 
+# total number of parameters in the model
+alpha_n <- 63 * 2 * 3
+beta_n <- 59 * 2 * 3
+gamma_n <- 5392 * 2
+alpha_n + beta_n + gamma_n
+
 # replace drug ids by names
 load("data/drugLookup.RData")
 replace_drug_ids <- function(x) {
