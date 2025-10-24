@@ -10,7 +10,7 @@ library(grid)
 alpha_n <- 63 * 2 * 3
 beta_n <- 59 * 2 * 3
 gamma_n <- 5392 * 2
-alpha_n + beta_n + gamma_n
+(alpha_n + beta_n + gamma_n) * 5392 #times the number of models
 
 # replace drug ids by names
 load("data/drugLookup.RData")
@@ -39,7 +39,7 @@ print(length(P_selection))
 
 # collect min p value of drug effect over proteins
 pvec <- apply(matrix(allPvecs[P_selection, ], nrow = length(P_selection)), 2, min)
-pvec <- pmin(pvec * length(P_selection), 1)
+pvec <- pmin(pvec * length(P_selection), 1) #bonferroni correction
 names(pvec) <- colnames(allPvecs)
 names(pvec) <- sapply(names(pvec), replace_drug_ids)
 
