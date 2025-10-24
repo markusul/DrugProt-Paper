@@ -11,30 +11,25 @@ allPvecs <- lapply(1:length(prot_names_short), function(P){
       load(file = paste0('results/DrugEffects/', P , '_', t, '.RData'))
       
       # correction of p values using holm
-      pval.drugs <- p.adjust(pval.drugs, method = 'holm')
+      #pval.drugs <- p.adjust(pval.drugs, method = 'holm')
       return(pval.drugs)
     }else{
       print(paste0(P, '_', t, " not found!"))
       return(rep(1, 122))
     }
   })
-  if(!is.null(dim(pvec))) {
-    psig <- apply(pvec, 2, function(p) sum(p.adjust(p, method = "holm", 
-                                                    n = length(prot_names_short) * 3) < 0.05))
-    pvec <- apply(pvec, 1, function(p) min(min(p) * 3, 1))
-  }
-  list(pvec, psig)
+  pvec
 })
 
 # number of significant drug effects on different times
-rowSums(sapply(allPvecs, function(P) P[[2]]))
+apply(array(p.adjust(unlist(allPvecs), method = "holm") < 0.05, 
+            dim = c(122, 3, length(prot_names_short))), 
+      2, sum)
 
-# collect all p values and organize as matrix
-allPvecs <- lapply(allPvecs, function(P) P[[1]])
-allPvecs <- allPvecs[unlist(lapply(allPvecs, length)) == 122]
-allPvecs <- do.call(rbind, allPvecs)
-
-save(allPvecs, file = "results/DrugEffects.RData")
+# save p values as array with dimensions (treatment, time, protein)
+treatment <- rownames(allPvecs[[1]])
+allPvecs <- array(unlist(allPvecs), dim = c(122, 3, length(prot_names_short)))
+save(allPvecs, treatment, file = "results/DrugEffects.RData")
 
 ##### Protein Network ####
 # collect all p values of protein on protein effects

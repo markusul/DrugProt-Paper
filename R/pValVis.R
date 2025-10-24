@@ -37,11 +37,10 @@ P_selection <- which(prot_names_short %in% path_s)
 print(prot_names_short[P_selection])
 print(length(P_selection))
 
-# collect min p value of drug effect over proteins
-pvec <- apply(matrix(allPvecs[P_selection, ], nrow = length(P_selection)), 2, min)
-pvec <- pmin(pvec * length(P_selection), 1) #bonferroni correction
-names(pvec) <- colnames(allPvecs)
-names(pvec) <- sapply(names(pvec), replace_drug_ids)
+# collect min p value of drug effect over proteins and timepoints
+pvec <- apply(allPvecs[, , P_selection], 1, function(p) min(p.adjust(p, method = "holm")))
+pvec <- p.adjust(pvec, method = "holm")
+names(pvec) <- sapply(treatment, replace_drug_ids)
 
 # Load Protein Network Data
 load("results/proteinNetwork.RData")

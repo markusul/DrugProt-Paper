@@ -115,13 +115,10 @@ server <- function(input, output) {
   })
 
   pvec <- reactive({
-    # collect min p value of drug effect over proteins
-    pvec <- apply(matrix(allPvecs[P_selection(), ], nrow = length(P_selection())), 2, min)
-    pvec <- pmin(pvec * length(P_selection()), 1)
-    names(pvec) <- colnames(allPvecs)
-
-    # Apply to all names in pvec
-    names(pvec) <- sapply(names(pvec), replace_drug_ids)
+    # collect min p value of drug effect over proteins and timepoints
+    pvec <- apply(allPvecs[, , P_selection()], 1, function(p) min(p.adjust(p, method = "holm")))
+    pvec <- p.adjust(pvec, method = "holm")
+    names(pvec) <- sapply(treatment, replace_drug_ids)
     pvec
   })
   Links_all <- reactive({
@@ -362,7 +359,6 @@ server <- function(input, output) {
       Links_sum <- SummGraph()$Links_sum
       Nodes_sum <- SummGraph()$Nodes_sum
     }
-
     fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                  Source = "source", Target = "target",
                  Value = "value", NodeID = "name",
