@@ -37,37 +37,30 @@ P_selection <- which(prot_names_short %in% path_s)
 print(prot_names_short[P_selection])
 print(length(P_selection))
 
-# collect min p value of drug effect over proteins and timepoints
+# collect min p value of drug effect over proteins and time points
 pvec <- apply(allPvecs[, , P_selection], 1, function(p) min(p.adjust(p, method = "holm")))
 pvec <- p.adjust(pvec, method = "holm")
 names(pvec) <- sapply(treatment, replace_drug_ids)
 
-# Load Protein Network Data
-load("results/proteinNetwork.RData")
-
 # significance level for protein network
 alpha <- 0.05
-alpha <- alpha / length(P_selection) / 2
 
-# transform p value to links using alpha
-Links_all <- lapply(Net, function(net){
-  res <- apply(net[[1]], 2, function(pval) which(pval < alpha))
-  links <- NULL
-  if(length(res) == 0) return(NULL)
-  for(i in 1:ncol(net[[1]])){
-    if(length(res[[i]]) != 0)
-      links <- rbind(links, data.frame('source' = res[[i]], 'target' = which(net[[2]][i] == prot_names_short)))
-  }
-  rownames(links) <- 1:nrow(links)
-  colnames(links) <- c('source', 'target')
-  links
-})
-
-#select relevant protein
-Links_all <- lapply(Links_all, function(links){
+# load p-value network
+load("results/proteinNetworkPval.RData")
+# select relevant p-values
+Pval_sel <- lapply(Pval_all, function(links){
   rel.Links <- links$source %in% P_selection | links$target %in% P_selection
   links[rel.Links, ]
 })
+
+# p-value correction
+Tpval <- sapply(Pval_sel, function(links) links$pvalue)
+Tpval.corr <- matrix(p.adjust(Tpval, method = "BH"), ncol = 2)
+Pval_sel[[1]][, "pvalue"] <- Tpval.corr[, 1]
+Pval_sel[[2]][, "pvalue"] <- Tpval.corr[, 2]
+
+# convert p-values to links
+Links_all <- lapply(Pval_sel, function(links) links[links$pvalue < alpha, ])
 
 # Prepare Summary Graph
 Links_sum <- do.call(rbind, Links_all)
@@ -75,15 +68,11 @@ Links_sum$source <- Links_sum$source - 1
 Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
 
-# number of links in the temporal graph
-nrow(unique(Links_sum))
-# average degree
-nrow(unique(Links_sum)) / length(P_selection)
-
 # number of links in the summary graph
+nrow(unique(Links_sum[, -3])) - length(P_selection)
+
+# number of links in the temporal graph
 nrow(Links_sum)
-# average degree
-nrow(Links_sum) / length(P_selection) / 2
 
 n <- length(prot_names_short)
 m <- length(P_selection)
@@ -91,9 +80,10 @@ m <- length(P_selection)
 # number of possible edges in the full summary graph
 n*(n-1)
 # number of possible edges in the selected summary graph
-((n-m) * m + m * (m-1)/2)* 2
+((n-m) * m + m * (m-1)/2) * 2
+
 # number of possible edges in the selected temporal graph
-m * (n-1) *4
+m * n * 2 + m * (n - m) * 2
 
 #selected nodes + connected nodes
 rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))

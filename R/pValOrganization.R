@@ -58,3 +58,31 @@ Net <- lapply(c(24, 48), function(t){
 })
 
 save(Net, file = "results/proteinNetwork.RData")
+
+##### Protein Network ####
+# collect all p values of protein on protein effects
+nProt <- length(prot_names_short)
+
+Pval_all <- lapply(c(24, 48), function(t){
+  Links <- lapply(1:nProt, function(Prot) {
+    path <- paste0('results/ProteinEffects/', Prot , '_', t, '.RData')
+    if(file.exists(path)){
+      load(file = path)
+      # select protein effects (leave drug effects)
+      pval <- unname(pval[(length(pval)-nProt + 1):length(pval)])
+      links <- data.frame('source' = 1:nProt, 
+                          'target' = Prot, 
+                          'pvalue' = pval)
+    }else{
+      links <- data.frame('source' = 1:nProt, 
+                          'target' = Prot, 
+                          'pvalue' = 2)
+      print("missing experiment!")
+    }
+    links
+  })
+  
+  do.call(rbind, Links)
+})
+
+save(Pval_all, file = "results/proteinNetworkPval.RData")
