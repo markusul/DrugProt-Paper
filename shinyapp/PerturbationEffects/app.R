@@ -116,9 +116,12 @@ server <- function(input, output) {
   })
 
   pvec <- reactive({
-    # collect min p value of drug effect over proteins and timepoints
-    pvec <- apply(allPvecs[, , P_selection()], 1, function(p) min(p.adjust(p, method = input$corectionDrug)))
-    pvec <- p.adjust(pvec, method = input$corectionDrug)
+    #adjust p values of drug effects on selected proteins
+    selPvecs <- allPvecs[, , P_selection()]
+    selPvecs <- array(p.adjust(selPvecs, method = input$corectionDrug), dim = dim(selPvecs))
+    
+    # collect min p value of drug effect over proteins and time points
+    pvec <- apply(selPvecs, 1, function(p) min(p))
     names(pvec) <- sapply(treatment, replace_drug_ids)
     pvec
   })

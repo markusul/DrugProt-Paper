@@ -37,9 +37,12 @@ P_selection <- which(prot_names_short %in% path_s)
 print(prot_names_short[P_selection])
 print(length(P_selection))
 
+#adjust p values of drug effects on selected proteins
+selPvecs <- allPvecs[, , P_selection]
+selPvecs <- array(p.adjust(selPvecs, method = "holm"), dim = dim(selPvecs))
+
 # collect min p value of drug effect over proteins and time points
-pvec <- apply(allPvecs[, , P_selection], 1, function(p) min(p.adjust(p, method = "holm")))
-pvec <- p.adjust(pvec, method = "holm")
+pvec <- apply(selPvecs, 1, function(p) min(p))
 names(pvec) <- sapply(treatment, replace_drug_ids)
 
 # significance level for protein network
