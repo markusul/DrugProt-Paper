@@ -46,8 +46,9 @@ ui <- dashboardPage(
                     fileInput("file", "Upload .txt File with Protein Names (one per line)", accept = c(".txt")),
                     h3("p-value Adjustments"),
                     numericInput("alpha", "Significance Level", value = 0.05, min = 0, max = 1, step = 0.0001),
+                    selectInput("corectionDrug", "Correction Method for Drug Effects", choices = p.adjust.methods, selected = 'holm'),
+                    selectInput("corectionProtein", "Correction Method for Protein Effects", choices = p.adjust.methods, selected = 'BH'),
                     width = 6),
-                
                 box(title = "Selected Proteins", status = "primary", solidHeader = TRUE,
                     tableOutput("selectedTable"), width = 6)
               )
@@ -93,7 +94,7 @@ server <- function(input, output) {
   # load data for Drug Effects
   load("../../results/DrugEffects.RData")
   load("../../results/anchor_opt/proteinSelection.RData")
-  load("../../results/proteinNetwork.RData")
+  load("../../results/proteinNetworkPval.RData")
 
 
   observeEvent(input$preSelected, {
@@ -116,36 +117,29 @@ server <- function(input, output) {
 
   pvec <- reactive({
     # collect min p value of drug effect over proteins and timepoints
-    pvec <- apply(allPvecs[, , P_selection()], 1, function(p) min(p.adjust(p, method = "holm")))
-    pvec <- p.adjust(pvec, method = "holm")
+    pvec <- apply(allPvecs[, , P_selection()], 1, function(p) min(p.adjust(p, method = input$corectionDrug)))
+    pvec <- p.adjust(pvec, method = input$corectionDrug)
     names(pvec) <- sapply(treatment, replace_drug_ids)
     pvec
   })
   Links_all <- reactive({
     if(is.null(P_selection())) return(NULL)
-
-    # transform p value to links using alpha
-    Links_all <- lapply(Net, function(net) {
-      pvals <- net[[1]]
-      targets <- match(net[[2]], prot_names_short)
-      # Find all (row, col) pairs where pval < alpha
-      idx <- which(pvals < (input$alpha / length(P_selection()) / 2), arr.ind = TRUE)
-      if(nrow(idx) == 0) return(NULL)
-      # Map columns to targets
-      links <- data.frame(
-        source = idx[, 1],
-        target = targets[idx[, 2]]
-      )
-      rownames(links) <- seq_len(nrow(links))
-      colnames(links) <- c("source", "target")
-      links
-    })
-
-    #select relevant links from or to selected proteins
-    Links_all <- lapply(Links_all, function(links){
+    
+    # select relevant p-values
+    Pval_sel <- lapply(Pval_all, function(links){
       rel.Links <- links$source %in% P_selection() | links$target %in% P_selection()
       links[rel.Links, ]
     })
+    
+    # p-value correction
+    Tpval <- sapply(Pval_sel, function(links) links$pvalue)
+    Tpval.corr <- matrix(p.adjust(Tpval, method = input$corectionProtein), ncol = 2)
+    Pval_sel[[1]][, "pvalue"] <- Tpval.corr[, 1]
+    Pval_sel[[2]][, "pvalue"] <- Tpval.corr[, 2]
+    
+    # convert p-values to links
+    Links_all <- lapply(Pval_sel, function(links) links[links$pvalue < input$alpha, ])
+    
     if(is.null(do.call(rbind, Links_all))) return(NULL)
     Links_all
   })

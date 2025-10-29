@@ -33,34 +33,6 @@ save(allPvecs, treatment, file = "results/DrugEffects.RData")
 
 ##### Protein Network ####
 # collect all p values of protein on protein effects
-# correct for FD per target protein
-Net <- lapply(c(24, 48), function(t){
-  net <- NULL
-  targets <- c() # response proteins
-  
-  for (P in 1:length(prot_names)) {
-    path <- paste0('results/ProteinEffects/', P , '_', t, '.RData')
-    if(file.exists(path)){
-      load(file = path)
-      # select protein effects (leave drug effects)
-      # apply Benjamini & Hochberg (1995) for fdr
-      pval.corr <- p.adjust(pval[(length(pval)-length(prot_names_short) + 1):length(pval)], 
-                            method = "BH")
-      net <- cbind(net, pval.corr) # add p values to network
-      targets <- c(targets, prot_names_short[P]) # add response
-    }else{
-      net <- cbind(net, rep(0, length(prot_names_short)))
-      targets <- c(targets, prot_names_short[P])
-      print("missing experiment!")
-    }
-  }
-  list(net, targets)
-})
-
-save(Net, file = "results/proteinNetwork.RData")
-
-##### Protein Network ####
-# collect all p values of protein on protein effects
 nProt <- length(prot_names_short)
 
 Pval_all <- lapply(c(24, 48), function(t){
