@@ -12,6 +12,11 @@ beta_n <- 59 * 2 * 3
 gamma_n <- 5392 * 2
 (alpha_n + beta_n + gamma_n) * 5392 #times the number of models
 
+# number of parameters in equation 1
+63 * 2 + 59 * 2
+# number of parameters in equation 2 and 3
+63 * 2 + 59 * 2 + 5392
+
 # replace drug ids by names
 load("data/drugLookup.RData")
 replace_drug_ids <- function(x) {
