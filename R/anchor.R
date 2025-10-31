@@ -87,10 +87,16 @@ load("results/anchor_opt/var_importance.RData")
 plot(var_importance)
 plot(sort(var_importance, decreasing = T))
 imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
+sort(var_importance, decreasing = T)[1:3]
+
 
 load("results/anchor_opt/regPath.RData")
 gg_path <- plot(path, sqrt_scale = T)
-gg_path + theme_bw() + theme(legend.position = "none")
+gg_path
+ggsave("figures/regPath.jpeg", 
+       gg_path + theme_bw() + theme(legend.position = "none"), 
+       width = 6, height = 3)
+
 
 cp <- which(path$cp == min(path$cp[path$cp > 0.5]))
 path_s <- which(path$varImp_path[cp, ] > 0)
@@ -117,10 +123,28 @@ imp_s <- imp_to_shortnames(imp_s)
 path_s <- imp_to_shortnames(path_s)
 stab_s <- imp_to_shortnames(stab_s)
 
-save(imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
+most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
+most_imp <- imp_to_shortnames(most_imp)
+
+save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
 
 load("results/anchor_opt/partial_dependence.RData")
 
 
-plot(dep2)
+
+gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ylab(expression(widehat(IC50)))
+gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ggtitle("") + ylab("")
+gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ggtitle("") + ylab("")
+
+library(gridExtra)
+ggdep <- grid.arrange(gg3, gg2, gg1, nrow =1)
+ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
+
+
+library(ggpubr)
+ggarrange(dep3, dep2)
+
 
