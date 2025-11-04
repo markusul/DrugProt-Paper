@@ -6,6 +6,13 @@ library(htmlwidgets)
 library(HiveR)
 library(grid)
 
+# number of datapoints in the models
+for(i in c("6", "24", "48")){
+  load(paste0("Z/", i, ".RData"))
+  print(dim(Z))
+}
+
+
 # total number of parameters in the model
 alpha_n <- 63 * 2 * 3
 beta_n <- 59 * 2 * 3
