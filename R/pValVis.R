@@ -6,6 +6,13 @@ library(htmlwidgets)
 library(HiveR)
 library(grid)
 
+# number of datapoints in the models
+for(i in c("6", "24", "48")){
+  load(paste0("Z/", i, ".RData"))
+  print(dim(Z))
+}
+
+
 # total number of parameters in the model
 alpha_n <- 63 * 2 * 3
 beta_n <- 59 * 2 * 3
@@ -37,6 +44,7 @@ load("results/DrugEffects.RData")
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
 P_selection <- which(prot_names_short %in% path_s)
+P_selection <- which(prot_names_short %in% most_imp)
 
 #P_selection <- 1:length(prot_names_short)
 print(prot_names_short[P_selection])
@@ -129,7 +137,7 @@ Links_temp <- lapply(1:2, function(t){
 })
 Links_temp <- do.call(rbind, Links_temp)
 Links_temp$value <- 1
-Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.3)
+Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.1)
 Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
 
 # Prepare for HivePlot
@@ -187,8 +195,7 @@ sum(pvec < 0.05)
 
 # plot heatmap of drug effects
 ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
-              type = "heatmap", colors = "Greys") %>%
-  layout(title = prot_names_short[P_selection])
+              type = "heatmap", colors = "Greys")
 ht
 
 #save heatmap
@@ -198,13 +205,17 @@ webshot("figures/ht_sel.html", file = "figures/ht_sel.png")
 # zoom in on significant part of heatmap
 ht_zoom <- ht
 ht_zoom <- ht_zoom %>% layout(xaxis = list(range = c(0, 11.5)), 
-                              yaxis = list(range = c(0, 11.5)))
+                              yaxis = list(range = c(0, 11.5))) %>%
+  layout(xaxis = list(tickfont = list(size = 20)), 
+         yaxis = list(tickfont = list(size = 20)))
 ht_zoom
 saveWidget(as_widget(ht_zoom), "figures/ht_zoom_sel.html")
 webshot("figures/ht_zoom_sel.html", file = "figures/ht_zoom_sel.png")
 
-
+Nodes_sum$size <- 10
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
+                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
+                   fontSize = 0.1, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
@@ -214,13 +225,16 @@ fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
 fN
 
 saveWidget(fN, "figures/summary_sel.html")
-webshot("figures/summary_sel.html", file = "figures/summary_sel.png")
+webshot("figures/summary_sel.html", file = "figures/summary_sel.png", zoom = 1)
 
+Nodes_temp$size <- 10
 fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
+                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
+                   fontSize = 0.1, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=T, charge = -15,
+                   arrows = T, zoom = T, legend=T, charge = -10,
                    opacityNoHover = TRUE,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN

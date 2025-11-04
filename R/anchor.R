@@ -1,5 +1,6 @@
 library(tidyr)
 library(ggplot2)
+theme_set(theme_bw(base_size = 14))
 library(SDModels)
 
 set.seed(42)
@@ -14,6 +15,7 @@ perturbations <- dat$perturbations
 pertLabel <- dat$pertLabel
 
 n <- length(Y)
+n
 anchor_dose <- sapply(strsplit(perturbations, ' '), function(x) x[1])
 Groups <- unique(anchor_dose)
 perturbations
@@ -44,19 +46,28 @@ names(dfPerf) <- rownames(mse)
 dfPerf$gamma <- gamma_vec ** 2
 
 xseq <- seq(min(dfPerf$gamma), max(dfPerf$gamma), length.out = 10000)
-dfPerf_g <- gather(dfPerf, 'intervention', 'mse', -gamma)
-#dfPerf_g <- dfPerf_g[dfPerf_g$intervention == "#20", ]
+dfPerf_g <- gather(dfPerf, 'environment', 'mse', -gamma)
+dfPerf_g$environment <- as.factor(dfPerf_g$environment)
+levels(dfPerf_g$environment) <- 1:8
+
+
 
 fit <- stats::loess(`#20` ~ gamma, dfPerf)
 fitted <- predict(fit, newdata = data.frame(gamma = xseq))
 # optimal gamma
 xseq[which.min(fitted)]
+
+perfRF <- dfPerf$`#20`[dfPerf$gamma == 1]
+perfARF <- min(fitted)
+(perfRF - perfARF) / perfRF
+
 data2 <- data.frame(mse = fitted, gamma = xseq)
 
-ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) + 
+ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) + 
   theme_bw() + 
-  geom_smooth(xseq = xseq, se = FALSE, aes(linetype = intervention, col = intervention)) + 
-  geom_point(aes(col = intervention, shape = intervention)) + 
+  geom_smooth(xseq = xseq, se = FALSE, linewidth = 0.4, 
+              aes(linetype = environment, col = environment)) + 
+  geom_point(aes(col = environment, shape = environment), size = 0.6) + 
   scale_shape_manual(values=0:7) +
   #geom_line(data = data2, colour = "blue", group = "3") + 
   geom_vline(xintercept = 1) +
@@ -64,7 +75,7 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = intervention)) +
   # + coord_cartesian(ylim = c(6, 1), xlim = c(1, 4))
 
 ggAnchor
-ggsave("figures/AnchorCV.jpeg")
+ggsave("figures/AnchorCV.jpeg", width = 6, height = 3)
 
 mean_perf <- sapply(unique(envs), function(env) mean((Y[envs == env] - mean(Y[envs != env]))**2))
 mean_perf
@@ -76,9 +87,17 @@ load("results/anchor_opt/var_importance.RData")
 plot(var_importance)
 plot(sort(var_importance, decreasing = T))
 imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
+sort(var_importance, decreasing = T)[1:3]
+
 
 load("results/anchor_opt/regPath.RData")
-plot(path, sqrt_scale = T)
+gg_path <- plot(path, sqrt_scale = T)
+gg_path
+ggsave("figures/regPath.jpeg", 
+       gg_path + theme_bw() + theme(legend.position = "none"), 
+       width = 6, height = 3)
+
+
 cp <- which(path$cp == min(path$cp[path$cp > 0.5]))
 path_s <- which(path$varImp_path[cp, ] > 0)
 
@@ -104,4 +123,28 @@ imp_s <- imp_to_shortnames(imp_s)
 path_s <- imp_to_shortnames(path_s)
 stab_s <- imp_to_shortnames(stab_s)
 
-save(imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
+most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
+most_imp <- imp_to_shortnames(most_imp)
+
+save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
+
+load("results/anchor_opt/partial_dependence.RData")
+
+
+
+gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ylab(expression(widehat(IC50)))
+gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ggtitle("") + ylab("")
+gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+  ggtitle("") + ylab("")
+
+library(gridExtra)
+ggdep <- grid.arrange(gg3, gg2, gg1, nrow =1)
+ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
+
+
+library(ggpubr)
+ggarrange(dep3, dep2)
+
+
