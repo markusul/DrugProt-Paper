@@ -7,6 +7,8 @@ library(grid)
 library(readxl)
 library(shinyWidgets)
 
+#choises of timepoints for drug effects
+t_choice <- c("6h", "24h", "48h")
 
 # replace drug ids by names
 load('../../data/drugLookup.RData')
@@ -55,6 +57,9 @@ ui <- dashboardPage(
       ),
       tabItem(tabName = "DrugEffects", 
               h2("Drug Effects"),
+              checkboxGroupButtons("t", "Select time after drug administration to analyze", t_choice, t_choice, checkIcon = list(
+                yes = icon("square-check"),
+                no = icon("square"))),
               fluidRow(
                 box(title = "Drug Effect Heatmap", status = "primary", solidHeader = TRUE,
                     plotlyOutput("plotDrugEffects", height = 800), width = 6),
@@ -116,15 +121,19 @@ server <- function(input, output) {
   })
 
   pvec <- reactive({
+    if(is.null(input$t)) return(NULL)
+    t_selection <- t_choice %in% input$t
+    
     #adjust p values of drug effects on selected proteins
     selPvecs <- allPvecs[, , P_selection()]
     selPvecs <- array(p.adjust(selPvecs, method = input$corectionDrug), dim = dim(selPvecs))
     
     # collect min p value of drug effect over proteins and time points
-    pvec <- apply(selPvecs, 1, function(p) min(p))
+    pvec <- apply(selPvecs, 1, function(p) min(p[t_selection, ]))
     names(pvec) <- sapply(treatment, replace_drug_ids)
     pvec
   })
+  
   Links_all <- reactive({
     if(is.null(P_selection())) return(NULL)
     
@@ -240,6 +249,8 @@ server <- function(input, output) {
 
   output$plotDrugEffects <- renderPlotly({
     if(length(P_selection()) == 0) return(NULL)
+    if(is.null(pvec())) return(NULL)
+    
     pMat <- matrix(NA, nrow = nDrugs, ncol = nDrugs)
     rownames(pMat) <- colnames(pMat) <- names(pvec())[1:nDrugs]
     for(l in names(pvec())){
@@ -261,6 +272,8 @@ server <- function(input, output) {
 
   output$singleDrugs <- renderUI({
     if(length(P_selection()) == 0) return(NULL)
+    if(is.null(pvec())) return(NULL)
+    
     singleInd <- sapply(names(pvec()), function(l) length(strsplit(l, ":")[[1]]) == 1)
     pvec_single <- pvec()[singleInd]
     pvec_single <- pvec_single[order(pvec_single)]
@@ -283,6 +296,8 @@ server <- function(input, output) {
 
   output$interactions <- renderUI({
     if(length(P_selection()) == 0) return(NULL)
+    if(is.null(pvec())) return(NULL)
+    
     interactionInd <- sapply(names(pvec()), function(l) length(strsplit(l, ":")[[1]]) > 1)
     pvec_interaction <- pvec()[interactionInd]
     pvec_interaction <- pvec_interaction[order(pvec_interaction)]
