@@ -37,6 +37,7 @@ replace_drug_ids <- function(x) {
 load('data/order.RData')
 nDrugs <- length(drugOrder)
 drugOrder <- sapply(drugOrder, replace_drug_ids)
+nProt <- length(prot_names_short)
 
 # load data for Drug Effects
 load("results/DrugEffects.RData")
@@ -44,9 +45,8 @@ load("results/DrugEffects.RData")
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
 P_selection <- which(prot_names_short %in% path_s)
-P_selection <- which(prot_names_short %in% most_imp)
+nSelection <- length(P_selection)
 
-#P_selection <- 1:length(prot_names_short)
 print(prot_names_short[P_selection])
 print(length(P_selection))
 
@@ -63,6 +63,31 @@ alpha <- 0.05
 
 # load p-value network
 load("results/proteinNetworkPval.RData")
+
+# analyze edges in the full graph
+# p-value correction
+Pval_full <- Pval_all
+Tpval <- sapply(Pval_all, function(links) links$pvalue)
+Tpval.corr <- matrix(p.adjust(Tpval, method = "BH"), ncol = 2)
+Pval_all[[1]][, "pvalue"] <- Tpval.corr[, 1]
+Pval_all[[2]][, "pvalue"] <- Tpval.corr[, 2]
+
+# convert p-values to links
+Links_all <- lapply(Pval_all, function(links) links[links$pvalue < alpha, ])
+
+# Prepare Summary Graph
+Links_sum <- do.call(rbind, Links_all)
+Links_sum$source <- Links_sum$source - 1
+Links_sum$target <- Links_sum$target - 1
+Links_sum$value <- 1
+
+# number of links in the summary graph
+nrow(unique(Links_sum[, -3])) - nProt
+
+# number of links in the temporal graph
+nrow(Links_sum)
+
+
 # select relevant p-values
 Pval_sel <- lapply(Pval_all, function(links){
   rel.Links <- links$source %in% P_selection | links$target %in% P_selection
@@ -90,16 +115,13 @@ nrow(unique(Links_sum[, -3])) - length(P_selection)
 # number of links in the temporal graph
 nrow(Links_sum)
 
-n <- length(prot_names_short)
-m <- length(P_selection)
-
 # number of possible edges in the full summary graph
-n*(n-1)
+nProt*(nProt-1)
 # number of possible edges in the selected summary graph
-((n-m) * m + m * (m-1)/2) * 2
+((nProt-nSelection) * nSelection + nSelection * (nSelection-1)/2) * 2
 
 # number of possible edges in the selected temporal graph
-m * n * 2 + m * (n - m) * 2
+nSelection * nProt * 2 + nSelection * (nProt - nSelection) * 2
 
 #selected nodes + connected nodes
 rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
@@ -195,7 +217,8 @@ sum(pvec < 0.05)
 
 # plot heatmap of drug effects
 ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
-              type = "heatmap", colors = "Greys")
+              type = "heatmap", colors = "Greys",
+              colorbar = list(title = "<b> P-Values </b>"))
 ht
 
 #save heatmap
