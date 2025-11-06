@@ -52,7 +52,9 @@ ui <- dashboardPage(
                     selectInput("corectionProtein", "Correction Method for Protein Effects", choices = p.adjust.methods, selected = 'BH'),
                     width = 6),
                 box(title = "Selected Proteins", status = "primary", solidHeader = TRUE,
-                    tableOutput("selectedTable"), width = 6)
+                    tableOutput("selectedTable"), width = 3),
+                box(title = "Summary", status = "primary", solidHeader = TRUE,
+                     width = 3)
               )
       ),
       tabItem(tabName = "DrugEffects", 
@@ -125,7 +127,7 @@ server <- function(input, output) {
     t_selection <- t_choice %in% input$t
     
     #adjust p values of drug effects on selected proteins
-    selPvecs <- allPvecs[, , P_selection()]
+    selPvecs <- array(allPvecs[, , P_selection()], dim = c(dim(allPvecs)[1:2], length(P_selection())))
     selPvecs <- array(p.adjust(selPvecs, method = input$corectionDrug), dim = dim(selPvecs))
     
     # collect min p value of drug effect over proteins and time points
@@ -152,7 +154,7 @@ server <- function(input, output) {
     # convert p-values to links
     Links_all <- lapply(Pval_sel, function(links) links[links$pvalue < input$alpha, ])
     
-    if(is.null(do.call(rbind, Links_all))) return(NULL)
+    if(sum(sapply(Links_all, nrow)) == 0) return(NULL)
     Links_all
   })
 
