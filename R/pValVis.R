@@ -6,12 +6,16 @@ library(htmlwidgets)
 library(HiveR)
 library(grid)
 
+# file to save results to
+fileConn <- file("results/P_Results.txt")
+writeLines(c("Results from the P-Value analysis of DrugProt", "\n"), fileConn)
+
 # number of datapoints in the models
+
 for(i in c("6", "24", "48")){
   load(paste0("Z/", i, ".RData"))
   print(dim(Z))
 }
-
 
 # total number of parameters in the model
 alpha_n <- 63 * 2 * 3
@@ -275,3 +279,5 @@ plotHive(HEC, ch = 0.001, bkgnd = "white",
          axLabs = c("24h", "6h", "48h"), 
          axLab.gpar = gpar(col = "black", fontsize = 24))
 dev.off()
+
+close(fileConn)
