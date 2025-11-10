@@ -6,27 +6,8 @@ library(htmlwidgets)
 library(HiveR)
 library(grid)
 
-# file to save results to
-fileConn <- file("results/P_Results.txt")
-writeLines(c("Results from the P-Value analysis of DrugProt", "\n"), fileConn)
-
-# number of datapoints in the models
-
-for(i in c("6", "24", "48")){
-  load(paste0("Z/", i, ".RData"))
-  print(dim(Z))
-}
-
-# total number of parameters in the model
-alpha_n <- 63 * 2 * 3
-beta_n <- 59 * 2 * 3
-gamma_n <- 5392 * 2
-(alpha_n + beta_n + gamma_n) * 5392 #times the number of models
-
-# number of parameters in equation 1
-63 * 2 + 59 * 2
-# number of parameters in equation 2 and 3
-63 * 2 + 59 * 2 + 5392
+# significance level for tests
+alpha <- 0.05
 
 # replace drug ids by names
 load("data/drugLookup.RData")
@@ -46,13 +27,76 @@ nProt <- length(prot_names_short)
 # load data for Drug Effects
 load("results/DrugEffects.RData")
 
+# load p-value network
+load("results/proteinNetworkPval.RData")
+
+# collect results
+P_Results <- c("Results from the P-Value analysis of DrugProt", "-----------------------------------")
+P_Results <- c(P_Results, paste0("Number of proteins: ", nProt))
+P_Results <- c(P_Results, paste0("Number of treatments: ", length(treatment)))
+
+drugComb <- sapply(treatment, function(x) grepl(":", x))
+# number of single drugs
+nSingleDrugs <- sum(!drugComb)
+# number of drug combinations
+nComboDrugs <- sum(drugComb)
+
+P_Results <- c(P_Results, paste0("Number of single drugs: ", nSingleDrugs))
+P_Results <- c(P_Results, paste0("Number of drug combinations: ", nComboDrugs))
+
+# number of datapoints in the models
+P_Results <- c(P_Results, "Number of data points in the models:")
+for(i in c("6", "24", "48")){
+  load(paste0("Z/", i, ".RData"))
+  P_Results <- c(P_Results, paste0("Time point ", i, "h:", nrow(Z)))
+  print(dim(Z))
+}
+
+# total number of parameters in the model
+alpha_n <- nSingleDrugs * 2 * 3
+beta_n <- nComboDrugs * 2 * 3
+gamma_n <- nProt * 2
+(alpha_n + beta_n + gamma_n) * nProt #times the number of models
+P_Results <- c(P_Results, paste0("Total number of parameters in the overall model: ", 
+                                   (alpha_n + beta_n + gamma_n) * nProt))
+
+# number of parameters in equation 1
+nSingleDrugs * 2 + nComboDrugs * 2
+P_Results <- c(P_Results, paste0("Number of parameters in equation 1: ", 
+                                   nSingleDrugs * 2 + nComboDrugs * 2))
+
+# number of parameters in equation 2 and 3
+nSingleDrugs * 2 + nComboDrugs * 2 + nProt
+P_Results <- c(P_Results, paste0("Number of parameters in equation 2 and 3: ", 
+                                  nSingleDrugs * 2 + nComboDrugs * 2 + nProt))
+
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
 P_selection <- which(prot_names_short %in% path_s)
 nSelection <- length(P_selection)
+P_Results <- c(P_Results, paste0("Number of selected proteins by AnchorForest: ", nSelection))
 
 print(prot_names_short[P_selection])
-print(length(P_selection))
+print(nSelection)
+
+##### P-value analysis of drug effects #####
+P_Results <- c(P_Results, "", "P-Value analysis of drug effects", "-----------------------------------")
+
+# total number of potential drug effects
+totalEffects <- length(treatment) * 3 * nProt
+totalEffects
+prod(dim(allPvecs))
+P_Results <- c(P_Results, paste0("Total number of potential drug effects in the models: ", 
+                                  totalEffects))
+
+# total significant drug effects
+allPvecsAdj <- array(p.adjust(allPvecs, method = "holm"), dim = dim(allPvecs))
+nSigDrug <- apply(allPvecsAdj, 2, function(p) sum(p < alpha))
+nSigDrug
+P_Results <- c(P_Results, "Number of significant drug effects in the models over time")
+P_Results <- c(P_Results, paste0("Time point 6h: ", nSigDrug[1]))
+P_Results <- c(P_Results, paste0("Time point 24h: ", nSigDrug[2]))
+P_Results <- c(P_Results, paste0("Time point 48h: ", nSigDrug[3]))
 
 #adjust p values of drug effects on selected proteins
 selPvecs <- allPvecs[, , P_selection]
@@ -62,22 +106,33 @@ selPvecs <- array(p.adjust(selPvecs, method = "holm"), dim = dim(selPvecs))
 pvec <- apply(selPvecs, 1, function(p) min(p))
 names(pvec) <- sapply(treatment, replace_drug_ids)
 
-# significance level for protein network
-alpha <- 0.05
+# number of significant drug effects on selected proteins
+sum(pvec < alpha)
+P_Results <- c(P_Results, paste0("Number of significant drug effects on selected proteins: ", sum(pvec < alpha)))
 
-# load p-value network
-load("results/proteinNetworkPval.RData")
+# significant single drugs on selected proteins
+sum(pvec[!drugComb] < alpha)
+P_Results <- c(P_Results, paste0("Number of significant single drugs on selected proteins: ", 
+                                  sum(pvec[!drugComb] < alpha)))
+
+# significant drug combinations on selected proteins
+sum(pvec[drugComb] < alpha)
+P_Results <- c(P_Results, paste0("Number of significant drug combinations on selected proteins: ", 
+                                  sum(pvec[drugComb] < alpha)))
+
+##### P-value network analysis #####
+P_Results <- c(P_Results, "", "P-Value network analysis", "-----------------------------------")
 
 # analyze edges in the full graph
 # p-value correction
 Pval_full <- Pval_all
 Tpval <- sapply(Pval_all, function(links) links$pvalue)
 Tpval.corr <- matrix(p.adjust(Tpval, method = "BH"), ncol = 2)
-Pval_all[[1]][, "pvalue"] <- Tpval.corr[, 1]
-Pval_all[[2]][, "pvalue"] <- Tpval.corr[, 2]
+Pval_full[[1]][, "pvalue"] <- Tpval.corr[, 1]
+Pval_full[[2]][, "pvalue"] <- Tpval.corr[, 2]
 
 # convert p-values to links
-Links_all <- lapply(Pval_all, function(links) links[links$pvalue < alpha, ])
+Links_all <- lapply(Pval_full, function(links) links[links$pvalue < alpha, ])
 
 # Prepare Summary Graph
 Links_sum <- do.call(rbind, Links_all)
@@ -86,11 +141,15 @@ Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
 
 # number of links in the summary graph
-nrow(unique(Links_sum[, -3])) - nProt
+nLinksFull <- nrow(unique(Links_sum[, -3])) - nProt
+nLinksFull
+P_Results <- c(P_Results, paste0("Number of links in the FULL summary graph: ", 
+                                  nLinksFull))
 
 # number of links in the temporal graph
 nrow(Links_sum)
-
+P_Results <- c(P_Results, paste0("Number of links in the FULL temporal graph: ", 
+                                  nrow(Links_sum)))
 
 # select relevant p-values
 Pval_sel <- lapply(Pval_all, function(links){
@@ -114,18 +173,57 @@ Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
 
 # number of links in the summary graph
-nrow(unique(Links_sum[, -3])) - length(P_selection)
+nLinksSel <- nrow(unique(Links_sum[, -3])) - length(P_selection)
+nLinksSel
+P_Results <- c(P_Results, paste0("Number of links in the SELECTED summary graph: ", 
+                                  nLinksSel))
 
 # number of links in the temporal graph
 nrow(Links_sum)
+P_Results <- c(P_Results, paste0("Number of links in the SELECTED temporal graph: ", 
+                                  nrow(Links_sum)))
+
+P_Results <- c(P_Results, "")
 
 # number of possible edges in the full summary graph
 nProt*(nProt-1)
+P_Results <- c(P_Results, paste0("Number of possible edges in the FULL summary graph: ", 
+                                  nProt*(nProt-1)))
+
+# number of possible edges in the full temporal graph
+nProt * nProt * 2
+P_Results <- c(P_Results, paste0("Number of possible edges in the FULL temporal graph: ", 
+                                  nProt * nProt * 2))
+
+# sanity check
+nProt * nProt * 2 + prod(dim(allPvecs)) * 2 == (alpha_n + beta_n + gamma_n) * nProt
+
 # number of possible edges in the selected summary graph
 ((nProt-nSelection) * nSelection + nSelection * (nSelection-1)/2) * 2
+P_Results <- c(P_Results, paste0("Number of possible edges in the SELECTED summary graph: ", 
+                                  ((nProt-nSelection) * nSelection + nSelection * (nSelection-1)/2) * 2))
 
 # number of possible edges in the selected temporal graph
 nSelection * nProt * 2 + nSelection * (nProt - nSelection) * 2
+P_Results <- c(P_Results, paste0("Number of possible edges in the SELECTED temporal graph: ", 
+                                  nSelection * nProt * 2 + nSelection * (nProt - nSelection) * 2))
+
+# degree of summary graphs
+P_Results <- c(P_Results, "")
+
+# full graph
+nLinksFull / nProt * 2 # every edge affects two nodes
+P_Results <- c(P_Results, paste0("Average degree of the FULL summary graph: ", 
+                                  nLinksFull / nProt * 2))
+
+# selected graph
+SelToSel <- sum(apply(Links_sum,1, function(links){
+  links["source"] %in% P_selection & links["target"] %in% P_selection
+}))
+
+(nLinksSel - SelToSel) / nSelection + SelToSel / nSelection * 2 # only some edges affect two nodes
+P_Results <- c(P_Results, paste0("Average degree of the SELECTED summary graph: ", 
+                                  (nLinksSel - SelToSel) / nSelection + SelToSel / nSelection * 2))
 
 #selected nodes + connected nodes
 rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
@@ -212,13 +310,8 @@ pMat <- as.matrix(pMat)
 pMat[is.na(pMat)] <- 2 # set no data to 2
 pMat <- pMat[drugOrder, drugOrder]
 
-# significant single drugs
-sum(diag(pMat) < 0.05)
-# significant drug effects
-sum(pvec < 0.05)
-# number of drug interactions tested
-122 - nDrugs
 
+##### Visualizations #####
 # plot heatmap of drug effects
 ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
               type = "heatmap", colors = "Greys",
@@ -280,4 +373,8 @@ plotHive(HEC, ch = 0.001, bkgnd = "white",
          axLab.gpar = gpar(col = "black", fontsize = 24))
 dev.off()
 
+
+# file to save results to
+fileConn <- file("results/P_Results.txt")
+writeLines(P_Results, fileConn)
 close(fileConn)
