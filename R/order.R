@@ -21,7 +21,10 @@ drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
 
 # collect protein names in short
-prot_names_short <- sapply(prot_names, function(p) strsplit(p, '[.]')[[1]][1])
-
+#prot_names_short <- sapply(prot_names, function(p) strsplit(p, '[.]')[[1]][1])
+prot_names_short <- sapply(prot_names, function(p) 
+  grep("_HUMAN", strsplit(p, '[.]')[[1]], value = T))
+prot_names_short <- sapply(prot_names_short, function(p) 
+  paste0(sapply(strsplit(p, "_"), "[[", 1), collapse = "/"))
 
 save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names)
