@@ -42,7 +42,7 @@ ui <- dashboardPage(
                     pickerInput("protSet", "Select Protein Set", 
                                 choices = unname(prot_names_short), 
                                 multiple = TRUE, 
-                                options = list(`actions-box` = TRUE, `live-search`=TRUE)),
+                                options = list("live-search"=TRUE)),
                     actionButton("preSelected", "pre Selected Set"),
                     actionButton("clear", "Clear Selection"), 
                     fileInput("file", "Upload .txt File with Protein Names (one per line)", accept = c(".txt")),
