@@ -378,3 +378,99 @@ dev.off()
 fileConn <- file("results/P_Results.txt")
 writeLines(P_Results, fileConn)
 close(fileConn)
+
+
+##### Visualize protein network only with the top three proteins #####
+P_selection <- which(prot_names_short %in% most_imp)
+
+# select relevant p-values
+Pval_sel <- lapply(Pval_all, function(links){
+  rel.Links <- links$source %in% P_selection | links$target %in% P_selection
+  links[rel.Links, ]
+})
+
+# p-value correction
+Tpval <- sapply(Pval_sel, function(links) links$pvalue)
+Tpval.corr <- matrix(p.adjust(Tpval, method = "BH"), ncol = 2)
+Pval_sel[[1]][, "pvalue"] <- Tpval.corr[, 1]
+Pval_sel[[2]][, "pvalue"] <- Tpval.corr[, 2]
+
+# convert p-values to links
+Links_all <- lapply(Pval_sel, function(links) links[links$pvalue < alpha, ])
+
+# Prepare Summary Graph
+Links_sum <- do.call(rbind, Links_all)
+Links_sum$source <- Links_sum$source - 1
+Links_sum$target <- Links_sum$target - 1
+Links_sum$value <- 1
+
+#selected nodes + connected nodes
+rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
+Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes+1], group = "Connected", size = 1)
+Nodes_sum$group[rel.Nodes %in% (P_selection-1)] <- "Selected"
+
+#reorganize link index
+for(i in 1:length(rel.Nodes)){
+  Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
+}
+
+# Prepare Temporal Graph
+expTimes <- c(6, 24, 48)
+rel6 <- sort(unique(c(P_selection, Links_all[[1]][, "source"])))
+rel24 <- sort(unique(c(P_selection, Links_all[[1]][, "target"], Links_all[[2]][, "source"])))
+rel48 <- sort(unique(c(P_selection, Links_all[[2]][, "target"])))
+rel <- list(rel6, rel24, rel48)
+lenRel <- c(0, length(rel6), length(rel24), length(rel48))
+
+nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
+               paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
+               paste(prot_names_short[rel48], expTimes[3], sep = '_'))
+nodegroups <- rep(paste0(expTimes, "h"), times = c(length(rel6), length(rel24), length(rel48)))
+
+# reorganize link index to match new nodenames
+Links_temp <- lapply(1:2, function(t){
+  links <- Links_all[[t]]
+  for(i in 1:length(rel[[t]])){
+    links[links[, 1] == rel[[t]][i], 1] <- i - 1 + sum(lenRel[1:t])
+  }
+  for(i in 1:length(rel[[t+1]])){
+    links[links[, 2] == rel[[t+1]][i], 2] <- i - 1 + sum(lenRel[1:(t+1)])
+  }
+  links
+})
+Links_temp <- do.call(rbind, Links_temp)
+Links_temp$value <- 1
+Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.1)
+Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
+
+# plot
+Nodes_sum$size <- 10
+fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
+                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
+                   fontSize = 0.1, bounded = T,
+                   Source = "source", Target = "target",
+                   Value = "value", NodeID = "name",
+                   Group = "group", opacity = 0.99, 
+                   arrows = T, zoom = T, charge = -20,
+                   opacityNoHover = TRUE, legend = T,
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+fN
+
+saveWidget(fN, "figures/summary_sel2.html")
+webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 1)
+
+Nodes_temp$size <- 10
+fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
+                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
+                   fontSize = 0.1, bounded = T,
+                   Source = "source", Target = "target",
+                   Value = "value", NodeID = "name",
+                   Group = "group", opacity = 0.99,# Nodesize = 3,
+                   arrows = T, zoom = T, legend=T, charge = -10,
+                   opacityNoHover = TRUE,
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+fN
+
+saveWidget(fN, "figures/temp_sel2.html")
+webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png")
+
