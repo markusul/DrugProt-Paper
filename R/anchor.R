@@ -21,7 +21,7 @@ n
 A_Results <- c("Results from Anchor Forest", "-----------------------------------")
 A_Results <- c(A_Results, paste0("Number of samples: ", n))
 
-# drug concentrationss
+# drug concentrations
 sort(unique(as.numeric(A)))
 A_Results <- c(A_Results, paste0("Unique drug concentrations: ", 
                                   paste(sort(unique(as.numeric(A))), collapse = ", ")))
