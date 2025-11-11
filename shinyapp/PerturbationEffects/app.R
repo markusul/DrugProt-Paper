@@ -54,7 +54,7 @@ ui <- dashboardPage(
                 box(title = "Selected Proteins", status = "primary", solidHeader = TRUE,
                     tableOutput("selectedTable"), width = 3),
                 box(title = "Summary", status = "primary", solidHeader = TRUE,
-                     width = 3)
+                    tableOutput("summaryTable"), width = 3)
               )
       ),
       tabItem(tabName = "DrugEffects", 
@@ -83,10 +83,10 @@ ui <- dashboardPage(
               ),
               fluidRow(
                 box(title = "Protein Interaction Network", status = "primary", solidHeader = TRUE,
-                    plotOutput("HivePlot", height = 400), width = 8), 
+                    plotOutput("HivePlot", height = 400), width = 4), 
                 box(title = "Relevant Proteins", status = "primary", solidHeader = TRUE,
-                    fluidRow(column(tableOutput("numProteinEffects"), width = 7), 
-                             column(tableOutput("ProteinEffects"), width = 5)), width = 4)
+                    fluidRow(column(tableOutput("numProteinEffects"), width = 6), 
+                             column(tableOutput("ProteinEffects"), width = 6)), width = 8)
               )
       )
     )
@@ -249,6 +249,57 @@ server <- function(input, output) {
     data.frame(Proteins = prot_names_short[P_selection()], stringsAsFactors = FALSE)
   })
 
+  output$summaryTable <- renderUI({
+    if(length(P_selection()) == 0) return(NULL)
+    sigEff <- pvec() < input$alpha
+
+    P_sel_inNodes <- which(SummGraph()$Nodes_sum$name %in% prot_names_short[P_selection()]) - 1
+    nParents <- sum(!SummGraph()$Links_sum$source %in% P_sel_inNodes)
+    nChildren <- sum(!SummGraph()$Links_sum$target %in% P_sel_inNodes)
+    
+    drug_info <- c(
+              paste0("Number of significant single drugs: ",
+                     sum(sigEff[1:nDrugs])),
+              paste0("Number of significant interactions: ",
+                     sum(sigEff[(nDrugs + 1):length(sigEff)]))
+    )
+
+    protein_info <- c(
+      paste0("Number of connections in protein network: ",
+             nrow(SummGraph()$Links_sum)),
+      paste0("Number of parents outside selected proteins: ",
+             nParents),
+      paste0("Number of children outside selected proteins: ",
+             nChildren)
+    )
+
+    rows_drug <- paste(
+      sapply(drug_info, function(line) {
+        paste0("<tr><td>", line, "</td></tr>")
+      }),
+      collapse = ""
+    )
+
+    rows_protein <- paste(
+      sapply(protein_info, function(line) {
+        paste0("<tr><td>", line, "</td></tr>")
+      }),
+      collapse = ""
+    )
+
+    htmlTable <- paste0(
+      "<table class=\"table table-bordered\">",
+      "<tbody>",
+      "<tr><th>Drug Effects</th></tr>",
+      rows_drug,
+      "<tr><th>Protein Network</th></tr>",
+      rows_protein,
+      "</tbody></table>"
+    )
+
+    HTML(htmlTable)
+  })
+  
   output$plotDrugEffects <- renderPlotly({
     if(length(P_selection()) == 0) return(NULL)
     if(is.null(pvec())) return(NULL)
