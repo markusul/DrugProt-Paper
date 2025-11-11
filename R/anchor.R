@@ -134,6 +134,18 @@ all(stab_s == path_s)
 # overlap with important proteins
 sum(stab_s %in% imp_s)
 
+##check timeoints of regularized selection
+#number of important proteins
+length(path_s)
+A_Results <- c(A_Results, paste0("Number of selected proteins (regularization path, cp > 0.5): ", 
+                                  length(path_s)))
+
+# get the last elemetns after splitting by '_'
+times <- table(sapply(strsplit(names(path_s), '_'), function(x) x[length(x)]))
+times
+A_Results <- c(A_Results, paste0("Timepoints of selected proteins (regularization path, cp > 0.5): ", 
+                                  paste(names(times), times, sep = ": ", collapse = ", ")))
+
 # map to short names
 load('data/order.RData')
 
@@ -149,12 +161,31 @@ imp_s <- imp_to_shortnames(imp_s)
 path_s <- imp_to_shortnames(path_s)
 stab_s <- imp_to_shortnames(stab_s)
 
+# number of unique proteins selected
+unique(path_s)
+A_Results <- c(A_Results, paste0("Number of unique selected proteins (regularization path, cp > 0.5): ", 
+                                  length(unique(path_s))))
+A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0.5): ", 
+                                  paste(unique(path_s), collapse = ", ")))
+
 # 3 most important proteins
 most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
+# timepoints of most important proteins
+times_imp <- table(sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)]))
+times_imp
+A_Results <- c(A_Results, paste0("Timepoints of 3 most important proteins: ", 
+                                  paste(names(times_imp), times_imp, sep = ": ", collapse = ", ")))
 most_imp <- imp_to_shortnames(most_imp)
+A_Results <- c(A_Results, paste0("3 most important proteins: ", 
+                                  paste(most_imp, collapse = ", ")))
 
+# save most important proteins to txt as example
+fileConn2 <- file("results/most_important_proteins.txt")
+writeLines(most_imp, fileConn2)
+close(fileConn2)
+
+# save selected proteins
 save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
-
 
 # partial dependence plots for the 3 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
