@@ -87,9 +87,7 @@ ui <- dashboardPage(
               fluidRow(
                 box(title = "Download Protein Interaction Network", status = "primary", solidHeader = TRUE,
                     downloadButton("downloadSummary", "Download Summary Graph"), 
-                    downloadButton("downloadTemporal", "Download Temporal Graph"), width = 12),
-                box(title = "Protein Interaction Network", status = "primary", solidHeader = TRUE,
-                    plotOutput("HivePlot", height = 400), width = 4), 
+                    downloadButton("downloadTemporal", "Download Temporal Graph"), width = 4),
                 box(title = "Relevant Proteins", status = "primary", solidHeader = TRUE,
                     fluidRow(column(tableOutput("numProteinEffects"), width = 6), 
                              column(tableOutput("ProteinEffects"), width = 6)), width = 8)
@@ -217,37 +215,6 @@ server <- function(input, output) {
     Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.3)
     Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
     list(Links_temp = Links_temp, Nodes_temp = Nodes_temp)
-  })
-  
-  Hive <- reactive({
-    if(is.null(Links_all())) return(NULL)
-    edges <- TempGraph()$Links_temp
-    edges[, 1:2] <- edges[, 1:2] + 1
-    names(edges) <- c("id1", "id2", "weight")
-    row.names(edges) <- NULL
-    edges$id1 <- as.integer(edges$id1)
-    edges$id2 <- as.integer(edges$id2)
-    edges$color <- "black"
-    edges$weight <- 0.1
-    nodes <- TempGraph()$Nodes_temp
-    names(nodes) <- c("lab", "axis", "size", "radius")
-
-    nodes$axis[nodes$axis == "6h"] <- 2
-    nodes$axis[nodes$axis == "24h"] <- 1
-    nodes$axis[nodes$axis == "48h"] <- 3
-    nodes$axis <- as.integer(nodes$axis)
-    nodes$id <- 1:nrow(nodes)
-    nodes$radius <- nodes$radius * 3
-    nodes$color <- "black"
-  
-    HEC <- list()
-    HEC$nodes <- nodes
-    HEC$edges <- edges
-    HEC$type <- "2D"
-    HEC$desc <- "HairEyeColor data set"
-    HEC$axis.cols <- c("grey", "grey")
-    class(HEC) <- "HivePlotData" 
-    HEC
   })
 
   output$selectedTable <- renderTable({
@@ -438,13 +405,6 @@ server <- function(input, output) {
                  opacityNoHover = TRUE, legend = T,
                  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
     fN
-  })
-
-  output$HivePlot <- renderPlot({
-    if(is.null(Links_all())) return(NULL)
-    plotHive(Hive(), ch = 0.001, bkgnd = "white", 
-             axLabs = c("24h", "6h", "48h"), 
-             axLab.gpar = gpar(col = "black", fontsize = 24))
   })
 
   output$TemporalGraph <- renderForceNetwork({
