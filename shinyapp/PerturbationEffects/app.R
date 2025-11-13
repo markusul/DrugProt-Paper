@@ -85,6 +85,9 @@ ui <- dashboardPage(
                     forceNetworkOutput("TemporalGraph", height = 800), width = 12)
               ),
               fluidRow(
+                box(title = "Download Protein Interaction Network", status = "primary", solidHeader = TRUE,
+                    downloadButton("downloadSummary", "Download Summary Graph"), 
+                    downloadButton("downloadTemporal", "Download Temporal Graph"), width = 12),
                 box(title = "Protein Interaction Network", status = "primary", solidHeader = TRUE,
                     plotOutput("HivePlot", height = 400), width = 4), 
                 box(title = "Relevant Proteins", status = "primary", solidHeader = TRUE,
@@ -471,7 +474,6 @@ server <- function(input, output) {
       write.csv(df_res, con, row.names = FALSE)
   })
 
-
   output$downloadPvalsProtein <- downloadHandler(
     filename = function() {
       paste('ProteinEffects-', Sys.Date(), '.csv', sep='')
@@ -494,6 +496,46 @@ server <- function(input, output) {
         }))
       }
       write.csv(df_res, con, row.names = FALSE)
+  })
+
+  output$downloadSummary <- downloadHandler(
+    filename = function() {
+      paste('ProteinNetworkSummary-', Sys.Date(), '.html', sep='')
+    },
+    content = function(con) {
+      if(is.null(P_selection())) return(NULL)
+      
+      if(is.null(SummGraph())){
+        Links_sum <- data.frame(source = 0, target = 0, value = 1)
+        Nodes_sum <- data.frame(name = prot_names_short[P_selection()], group = "Selected", size = 1)
+      }else{
+        Links_sum <- SummGraph()$Links_sum
+        Nodes_sum <- SummGraph()$Nodes_sum
+      }
+      fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
+                   Source = "source", Target = "target",
+                   Value = "value", NodeID = "name",
+                   Group = "group", opacity = 0.99, 
+                   arrows = T, zoom = T, charge = -20,
+                   opacityNoHover = TRUE, legend = T,
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+      saveNetwork(fN, file = con)
+  })
+
+  output$downloadTemporal <- downloadHandler(
+    filename = function() {
+      paste('ProteinNetworkTemporal-', Sys.Date(), '.html', sep='')
+    },
+    content = function(con) {
+      if(is.null(P_selection())) return(NULL)
+      fN <- forceNetwork(Links = TempGraph()$Links_temp, Nodes = TempGraph()$Nodes_temp,
+                   Source = "source", Target = "target",
+                   Value = "value", NodeID = "name",
+                   Group = "group", opacity = 0.99,# Nodesize = 3,
+                   arrows = T, zoom = T, legend=T, charge = -15,
+                   opacityNoHover = TRUE,
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+      saveNetwork(fN, file = con)
   })
 }
 
