@@ -50,7 +50,10 @@ ui <- dashboardPage(
                     numericInput("alpha", "Significance Level", value = 0.05, min = 0, max = 1, step = 0.0001),
                     selectInput("corectionDrug", "Correction Method for Drug Effects", choices = p.adjust.methods, selected = 'holm'),
                     selectInput("corectionProtein", "Correction Method for Protein Effects", choices = p.adjust.methods, selected = 'BH'),
-                    width = 6),
+                    width = 6), 
+                box(title = "Download P-values for selected Proteins", status = "primary", solidHeader = TRUE,
+                  downloadButton("downloadPvalsDrug", "Download P-values of Drug Effects"), 
+                  downloadButton("downloadPvalsProtein", "Download P-values of Protein Effects"), width = 6),
                 box(title = "Selected Proteins", status = "primary", solidHeader = TRUE,
                     tableOutput("selectedTable"), width = 3),
                 box(title = "Summary", status = "primary", solidHeader = TRUE,
@@ -453,6 +456,46 @@ server <- function(input, output) {
     fN
   })
 
+  output$downloadPvalsDrug <- downloadHandler(
+    filename = function() {
+      paste('DrugEffects-', Sys.Date(), '.csv', sep='')
+    },
+    content = function(con) {
+      if(is.null(P_selection())) {
+        df_res <- data.frame(Drug_or_Interaction = "No protein selected!", PValue = NA, 
+                             stringsAsFactors = FALSE)
+      }else{
+        df_res <- data.frame(Drug_or_Interaction = names(pvec()), PValue = pvec(), 
+                            stringsAsFactors = FALSE)
+      }
+      write.csv(df_res, con, row.names = FALSE)
+  })
+
+
+  output$downloadPvalsProtein <- downloadHandler(
+    filename = function() {
+      paste('ProteinEffects-', Sys.Date(), '.csv', sep='')
+    },
+    content = function(con) {
+      if(is.null(P_selection())) {
+        df_res <- data.frame(source = "No protein selected!", target = NA, PValue = NA, 
+                             stringsAsFactors = FALSE)
+      }else{
+        Links_all_res <- Links_all()
+        df_res <- do.call(rbind, lapply(1:length(Links_all_res), function(i){
+          links <- Links_all_res[[i]]
+          if(nrow(links) == 0) return(NULL)
+        df <- data.frame(InteractionType = ifelse(i == 1, "6h to 24h", "24h to 48h"),
+                         Source = prot_names_short[links$source], 
+                         Target = prot_names_short[links$target], 
+                         PValue = links$pvalue, 
+                         stringsAsFactors = FALSE)
+          df
+        }))
+      }
+      write.csv(df_res, con, row.names = FALSE)
+  })
 }
+
 
 shinyApp(ui, server)
