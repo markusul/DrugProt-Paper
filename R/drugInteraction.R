@@ -7,16 +7,14 @@ set.seed(22)
 load("data/laggedData.RData")
 expTimes <- c(6, 24, 48)
 
-#res <- lapply(prot_names, function(P){
 res <- parallel::mclapply(prot_names, mc.cores = 100, function(P){
-lapply(expTimes, function(t){
-#parallel::mclapply(expTimes, mc.cores = 3, function(t){
+lapply(expTimes, function(tp){
   print(P)
-  print(t)
+  print(tp)
   
   # Data for model
-  Y <- datI[datI$pert_time == t, P] - datI[datI$pert_time == t, paste0(P, "_0")]
-  D <- datI[datI$pert_time == t, pert_names]
+  Y <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
+  D <- datI[datI$pert_time == tp, pert_names]
   
   ## prepare design matrix with interactions
   drug_design <- model.matrix(~ -1 + .^2, data = D)
@@ -38,18 +36,14 @@ lapply(expTimes, function(t){
   design <- drug_design
   
   #protein design
-  laggedTime <- which(expTimes == t) - 1
+  laggedTime <- which(expTimes == tp) - 1
   
   if(laggedTime > 0){
-    max(datI[datI$pert_time == t, 'label'])
-    sum(is.na(aggData[[laggedTime]]))
-    sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
-    protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
+    protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
 
     # differential expression to baseline
-    protein_design <- protein_design - datI[datI$pert_time == t, paste0(prot_names, "_0")]
+    protein_design <- protein_design - datI[datI$pert_time == tp, paste0(prot_names, "_0")]
     colnames(protein_design) <- prot_names
-    
     design <- cbind(design, protein_design)
     
     # remove samples without lagged protein measurements
@@ -63,7 +57,7 @@ lapply(expTimes, function(t){
   colnames(drug_design)
   
   # load projections
-  load(paste0('Z/', t, '.RData'))
+  load(paste0('Z/', tp, '.RData'))
   
   #hdi fit with robustness against model misspecifications
   fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
@@ -71,31 +65,33 @@ lapply(expTimes, function(t){
   # apply group testing for each treatments (intercept and effect)
   nDrugs <- ncol(D)
   pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = FALSE)})
+
+  # collect estimated effects for drug effects
   effects.drugs <- lapply(dLabels_measured, function(l){fit$betahat[which(dlabels_model == l)]})
   names(effects.drugs) <- dLabels_measured
   effects.drugs.debiased <- lapply(dLabels_measured, function(l){fit$bhat[which(dlabels_model == l)]})
   names(effects.drugs.debiased) <- dLabels_measured
 
-  save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', t, '.RData'), 
-       pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, t, effects.drugs, effects.drugs.debiased)
+  save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '.RData'), 
+       pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
   
-  # collect p values for protein effects
   pval <- NULL
   bhat <- NULL
   betahat <- NULL
-  
-  if(laggedTime > 0){ # return p values for protein effects
+  # return p values for protein effects
+  if(laggedTime > 0){
     pval <- fit$pval
     pval <- pval[(length(dlabels_model)+1):length(pval)]
 
+    # estimated effects
     bhat <- fit$bhat
     bhat <- bhat[(length(dlabels_model)+1):length(bhat)]
 
     betahat <- fit$betahat
     betahat <- betahat[(length(dlabels_model)+1):length(betahat)]
   }
-  save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', t, '.RData'), 
-       pval, prot_names, P, t, bhat, betahat)
+  save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', tp, '.RData'), 
+       pval, prot_names, P, tp, bhat, betahat)
 })
 })
 

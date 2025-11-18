@@ -10,8 +10,8 @@ var_importance <- fit_anchor$var_importance
 print("Variable importance:")
 save(var_importance, file = "results/anchor_opt/var_importance.RData")
 
+# check whether enough trees were grown
 print("plot anchor fit")
-
 png("results/anchor_opt/anchor_plot.png", width = 800, height = 600)
 plot(fit_anchor)
 dev.off()
@@ -24,12 +24,7 @@ print("stability selection")
 stab <- stabilitySelection(fit_anchor)
 save(stab, file = "results/anchor_opt/stability_selection.RData")
 
-print("Prune")
-fit_anchor <- prune(fit_anchor, path$cp_min)
-var_importance <- fit_anchor$var_importance
-save(var_importance, file = "results/anchor_opt/var_importance_pruned.RData")
-
-
+# three most important proteins
 most_imp <- which(fit_anchor$var_importance >= sort(fit_anchor$var_importance, decreasing = TRUE)[3])
 
 print("partial dependence")

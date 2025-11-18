@@ -10,14 +10,14 @@ expTimes <- c(6, 24, 48)
 
 # protein of interest
 P <- prot_names[1]
-t <- expTimes[as.numeric(args[1])]
+tp <- expTimes[as.numeric(args[1])]
 
 print(P)
-print(t)
+print(tp)
 
 # Data for model
-Y <- datI[datI$pert_time == t, P] - datI[datI$pert_time == t, paste0(P, "_0")]
-D <- datI[datI$pert_time == t, pert_names]
+Y <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
+D <- datI[datI$pert_time == tp, pert_names]
 
 ## prepare design matrix with interactions
 drug_design <- model.matrix(~ -1 + .^2, data = D)
@@ -39,18 +39,14 @@ drug_design <- cbind(drug_design, drug_intercept)
 design <- drug_design
 
 #protein design
-laggedTime <- which(expTimes == t) - 1
+laggedTime <- which(expTimes == tp) - 1
 
 if(laggedTime > 0){
-  max(datI[datI$pert_time == t, 'label'])
-  sum(is.na(aggData[[laggedTime]]))
-  sum(rowSums(is.na(aggData[[laggedTime]])) > 0)
-  protein_design <- aggData[[laggedTime]][datI[datI$pert_time == t, 'label'], ]
+  protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
 
   # differential expression to baseline
-  protein_design <- protein_design - datI[datI$pert_time == t, paste0(prot_names, "_0")]
+  protein_design <- protein_design - datI[datI$pert_time == tp, paste0(prot_names, "_0")]
   colnames(protein_design) <- prot_names
-  
   design <- cbind(design, protein_design)
   
   # remove samples without lagged protein measurements
@@ -65,12 +61,11 @@ colnames(drug_design)
 
 #hdi fit
 fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T)
-#                  parallel = T, ncores = 100)
 #save Z
 Z <- fit$Z
 print(dim(Z))
 
-save(Z, file = paste0('Z/', t, '.RData'))
+save(Z, file = paste0('Z/', tp, '.RData'))
 
 print("finished!")
 end_time <- Sys.time()

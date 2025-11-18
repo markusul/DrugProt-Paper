@@ -7,6 +7,7 @@ set.seed(42)
 # load and preprocess data
 source("R/utils.R")
 dat <- prepAggData()
+
 Y <- dat$Y
 A <- as.matrix(dat$A)
 p_names <- dat$p_names
