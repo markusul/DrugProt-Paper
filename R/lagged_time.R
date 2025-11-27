@@ -1,13 +1,14 @@
 load("data/prepData.RData")
 load("data/protNames.RData")
 
+# treat all no drug experiments equally (singleDrug/drugCombination experiments)
 data$pertLabel[data$pertLabel == 'no no'] <- 'no'
 
 # remove proteins with less than 11 unique values
 abundand <- apply(data[, prot_names], 2, function(x) length(unique(x)) > 10)
 prot_names <- prot_names[abundand]
 
-#mean per protein plate at time 0
+# E[P0|C]
 dat0 <- data[data$pert_time == 0, ]
 dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = mean)
 
@@ -16,22 +17,21 @@ drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
 
 # collect protein names in short
-prot_names_short <- sapply(prot_names, function(p) strsplit(p, '[.]')[[1]][1])
+prot_names_short <- sapply(prot_names, function(p) 
+  grep("_HUMAN", strsplit(p, '[.]')[[1]], value = T))
+prot_names_short <- sapply(prot_names_short, function(p) 
+  paste0(sapply(strsplit(p, "_"), "[[", 1), collapse = "/"))
 
 # save order and short names
 save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names)
 
-# add mean at 0 to data
+# add E[P0|C] to data
 names(dat0)[-1] <- paste0(names(dat0)[-1], "_0")
 row.names(dat0) <- dat0[, 1]
 dat0 <- dat0[data$protein_plate, -1]
 
-# add mean at 0 to data
 dat <- data
 dat <- cbind(dat, dat0)
-
-# remove M453(ATCC) (no baseline protein expression)
-dat <- dat[dat$protein_plate != "M453(ATCC)", ]
 
 # add nois to imputation for computational und statistical stability
 add_noise_to_imputation <- function(x){
@@ -45,6 +45,7 @@ add_noise_to_imputation <- function(x){
   y
 }
 
+# impute with truncated normal per protein per cell line
 datI <- dat
 plate_idx <- lapply(unique(dat$protein_plate), function(plate) which(dat$protein_plate == plate))
 
@@ -52,12 +53,11 @@ for(p in prot_names){
   for(plate in plate_idx){
     if(sum(is.na(add_noise_to_imputation(datI[plate, p]))) > 0)stop('nas produced')
     datI[plate, p] <- add_noise_to_imputation(datI[plate, p])
-    
   }
 }
 
 ### collect aggregated lagged times
-# unique experiments
+# unique experiments E[Pt|C,D]
 uniqueExp <- unique(datI[, c("Anchor_dose", "Library_dose", "pertLabel", 'protein_plate')])
 
 expTimes <- c(6, 24, 48)
@@ -74,9 +74,12 @@ aggData <- lapply(expTimes, function(prev) {
     sel <- anchor & libr & pert & plate & tim
     
     if(sum(sel) == 0) {
+      # experiments that do not have this time point
       print(prev)
       print(experiment)
     }
+
+    # mean over replicates
     colMeans(datI[sel, prot_names])
   }))
 })
@@ -96,5 +99,6 @@ for(i in 1:nrow(uniqueExp)){
   label[sel] <- i
 }
 datI$label <- label
+is.na(datI)
 
 save(datI, prot_names, pert_names, aggData, file = 'data/laggedData.RData')
