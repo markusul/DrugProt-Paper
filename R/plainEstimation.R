@@ -1,5 +1,6 @@
-library(ranger)
-library(SDForest)
+set.seed(42)
+start_time <- Sys.time()
+
 source("R/utils.R")
 
 dat <- prepAggData()
@@ -10,24 +11,34 @@ p_names <- dat$p_names
 perturbations <- dat$perturbations
 pertLabel <- dat$pertLabel
 
-#hist(apply(X, 2, function(x)length(unique(x))), breaks = 1000)
 
 X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
 
-fit_full <- ranger(y = Y, x = X, importance = 'impurity')
-fit_full
-plot(sort(fit_full$variable.importance))
+anchor_dose <- sapply(strsplit(perturbations, ' '), function(x) x[1])
+Groups <- unique(anchor_dose)
 
-imp_full <- names(sort(fit_full$variable.importance, decreasing = T))
-imp_full
+envs <- rep(0, n)
 
+for(group in Groups){
+  test_pert <- perturbations[anchor_dose == group]
+  envs[which(pertLabel %in% test_pert)] <- group
+}
+envs <- as.factor(envs)
+trees_envs <- rep(200, length(levels(envs)))
+names(trees_envs) <- levels(envs)
+trees_envs['0'] <- 0
 
-i <- 1
-perf <- sapply(seq(1, 1000, 10), function(i){
-  fit_lim <- ranger(y = Y, x = X[, imp_full[-c(1:i)]])
-  fit_lim$r.squared
-})
+library(SDModels)
+fit_plain_full <- SDForest(x = X, y = Y, nTree = 1000,
+                       Q_type = "no_deconfounding", cp = 0, mc.cores = 20)
+fit_plain_full <- toList(fit_plain_full)
+save(fit_plain_full, file = paste0("results/plainFit_full.RData"))
 
-plot(seq(1, 1000, 10), perf)
+fit_plain <- SDForest(x = X[envs != "0", ], y = Y[envs != "0"], envs = envs[envs != "0"], nTree_env = trees_envs,
+                       Q_type = "no_deconfounding", cp = 0, mc.cores = 20)
+fit_plain <- toList(fit_plain)
+save(fit_plain, file = paste0("results/plainFit.RData"))
 
+end_time <- Sys.time()
+cat("Time taken:", end_time - start_time, "\n")
