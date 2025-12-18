@@ -4,22 +4,21 @@ library(tidyr)
 
 # Load prepared data
 load("data/prepData.RData")
-raw_data <- data   # keep original under a clearer name
+agg_input <- data   # keep original under a clearer name
 
 # Number of protein measurement columns (first n_protein columns of raw_data)
 n_protein <- 5519
-names(raw_data)[n_protein + 0:2]
-names(raw_data)[1]
+names(agg_input)[n_protein + 0:2]
+names(agg_input)[1]
 
-prot_names <- names(raw_data)[1:n_protein]
+prot_names <- names(agg_input)[1:n_protein]
 
 # Determine additional perturbation-related columns that follow the protein columns
-n_pert_single <- length(unique(raw_data$pertLabel[raw_data$type == 'singleDrug']))
-pert_names <- names(raw_data)[(1 + n_protein):(n_protein + n_pert_single)]
+n_pert_single <- length(unique(agg_input$pertLabel[agg_input$type == 'singleDrug']))
+pert_names <- names(agg_input)[(1 + n_protein):(n_protein + n_pert_single)]
 
-# Remove rows that represent "no response" mixtures we don't want to aggregate
-# Keep 'no' rows because they serve as baseline later; exclude 'no no' entirely.
-agg_input <- raw_data %>% filter(pertLabel != 'no no')
+# treat all no drug experiments equally (singleDrug/drugCombination experiments)
+agg_input$pertLabel[agg_input$pertLabel == 'no no'] <- 'no'
 
 # Drop columns that are not needed for aggregation of measurements
 drop_cols <- c('type', 'Sample_ID', 'BioRep', 'machine', 'NY')
