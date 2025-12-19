@@ -72,3 +72,12 @@ agg_data <- combined_wide %>%
 
 # Save the processed aggregated data
 save(agg_data, file = "data/aggData.RData")
+
+# save protein names
+prot_names_baseline <- paste0(prot_names, '_baseline')
+prot_names_0 <- paste0(prot_names, '_0')
+prot_names_6 <- paste0(prot_names, '_6')
+prot_names_24 <- paste0(prot_names, '_24')
+prot_names_48 <- paste0(prot_names, '_48')
+
+save(prot_names, prot_names_baseline, prot_names_0, prot_names_6, prot_names_24, prot_names_48, pert_names, file = 'data/protNames.RData')
