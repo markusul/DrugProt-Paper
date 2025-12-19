@@ -31,12 +31,12 @@ trees_envs['0'] <- 0
 
 library(SDModels)
 fit_plain_full <- SDForest(x = X, y = Y, nTree = 1000,
-                       Q_type = "no_deconfounding", cp = 0, mc.cores = 20)
+                       Q_type = "no_deconfounding", cp = 0, mc.cores = 100)
 fit_plain_full <- toList(fit_plain_full)
 save(fit_plain_full, file = paste0("results/plainFit_full.RData"))
 
 fit_plain <- SDForest(x = X[envs != "0", ], y = Y[envs != "0"], envs = envs[envs != "0"], nTree_env = trees_envs,
-                       Q_type = "no_deconfounding", cp = 0, mc.cores = 20)
+                       Q_type = "no_deconfounding", cp = 0, mc.cores = 100)
 fit_plain <- toList(fit_plain)
 save(fit_plain, file = paste0("results/plainFit.RData"))
 

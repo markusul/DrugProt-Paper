@@ -28,7 +28,7 @@ agg_input <- agg_input %>% select(-any_of(drop_cols))
 # Aggregate protein columns, perturbation indicator columns and IC50 by mean (na.rm = TRUE)
 agg_data <- agg_input %>%
     group_by(protein_plate, pertLabel, Anchor_dose, Library_dose, pert_time) %>%
-    summarise(across(all_of(c(prot_names, pert_names, "IC50")), mean, na.rm = TRUE),
+    summarise(across(all_of(c(prot_names, pert_names, "IC50")), \(x) mean(x, na.rm = TRUE)),
                         .groups = "drop")
 
 # Extract baseline protein measurements (pertLabel == 'no')
@@ -52,7 +52,7 @@ baseline_rows <- agg_pert %>%
 # For each protein_plate in baseline_rows, copy the prot_names values from baseline_prot
 baseline_rows <- baseline_rows %>%
     left_join(baseline_prot %>% select(protein_plate, all_of(prot_names)),
-                        by = "protein_plate")
+                        by = "protein_plate", relationship = "many-to-many")
 
 # Combine perturbation aggregated data with the baseline rows (so each perturbation has a time 0 baseline)
 combined <- bind_rows(agg_pert, baseline_rows)
