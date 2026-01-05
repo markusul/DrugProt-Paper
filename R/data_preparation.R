@@ -61,7 +61,8 @@ combined <- bind_rows(agg_pert, baseline_rows)
 # Values are the protein columns; non-value columns (grouping/meta) are kept as is.
 combined_wide <- combined %>%
     pivot_wider(names_from = pert_time, values_from = all_of(prot_names),
-                            names_sep = "_")  # add suffix so column names are unique
+                names_sep = "_",
+                values_fn = first)  # take first value when multiple exist
 
 # Remove rows that have any missing protein measurements across the time points
 combined_wide <- combined_wide %>% drop_na()
