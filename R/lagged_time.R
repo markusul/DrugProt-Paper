@@ -33,6 +33,9 @@ dat0 <- dat0[data$protein_plate, -1]
 dat <- data
 dat <- cbind(dat, dat0)
 
+# remove M453(ATCC) (no baseline protein expression)
+dat <- dat[dat$protein_plate != "M453(ATCC)", ]
+
 # add nois to imputation for computational und statistical stability
 add_noise_to_imputation <- function(x){
   if(length(unique(x)) < 3) return(x)
