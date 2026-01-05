@@ -41,8 +41,9 @@ gamma_seq <- c(0.0000001, 0.3, 0.6, seq(1, 4, 0.2))
 gamma <- gamma_seq[as.numeric(args[1])]
 
 # fit Anchor Forest
+options(future.globals.maxSize = 2.0 * 1e9) # increase max global size for parallel processing
 fit_anchor <- SDForest(x = X, y = Y, A = A, envs = envs, nTree_leave_out = trees_envs,
-                       Q_type = "no_deconfounding", gamma = gamma ** 2, cp = 0, mc.cores = 20, gpu = F)
+                       Q_type = "no_deconfounding", gamma = gamma ** 2, cp = 0, mc.cores = 100)
 
 # collect out-of-environment residuals
 pred <- fit_anchor$ooEnv_predictions
