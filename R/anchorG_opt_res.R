@@ -1,9 +1,9 @@
 library(SDModels)
+options(future.globals.maxSize = 30.0 * 1e9) # increase max global size for parallel processing
 library(ggplot2)
 
 print("load data")
 load("results/anchorG_opt.RData")
-fit_anchor <- fromList(fit_anchor)
 print(fit_anchor)
 var_importance <- fit_anchor$var_importance
 
