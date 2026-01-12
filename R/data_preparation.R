@@ -17,9 +17,6 @@ prot_names <- names(agg_input)[1:n_protein]
 n_pert_single <- length(unique(agg_input$pertLabel[agg_input$type == 'singleDrug']))
 pert_names <- names(agg_input)[(1 + n_protein):(n_protein + n_pert_single)]
 
-# treat all no drug experiments equally (singleDrug/drugCombination experiments)
-agg_input$pertLabel[agg_input$pertLabel == 'no no'] <- 'no'
-
 # Drop columns that are not needed for aggregation of measurements
 drop_cols <- c('type', 'Sample_ID', 'BioRep', 'machine', 'NY')
 agg_input <- agg_input %>% select(-any_of(drop_cols))
@@ -28,7 +25,7 @@ agg_input <- agg_input %>% select(-any_of(drop_cols))
 # Aggregate protein columns, perturbation indicator columns and IC50 by mean (na.rm = TRUE)
 agg_data <- agg_input %>%
     group_by(protein_plate, pertLabel, Anchor_dose, Library_dose, pert_time) %>%
-    summarise(across(all_of(c(prot_names, pert_names, "IC50")), \(x) mean(x, na.rm = TRUE)),
+    summarise(across(all_of(c(prot_names, pert_names, "IC50")), \(x) median(x, na.rm = TRUE)),
                         .groups = "drop")
 
 # Extract baseline protein measurements (pertLabel == 'no')
