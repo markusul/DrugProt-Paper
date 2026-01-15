@@ -1,3 +1,5 @@
+print("start lagged time data preparation")
+
 load("data/prepData.RData")
 load("data/protNames.RData")
 
@@ -99,6 +101,5 @@ for(i in 1:nrow(uniqueExp)){
   label[sel] <- i
 }
 datI$label <- label
-is.na(datI)
 
 save(datI, prot_names, pert_names, aggData, file = 'data/laggedData.RData')

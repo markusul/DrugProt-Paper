@@ -1,3 +1,5 @@
+print("start data preprocessing")
+
 library(dplyr)
 library(fastDummies)
 
