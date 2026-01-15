@@ -107,11 +107,14 @@ plot(sort(var_importance, decreasing = T))
 imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
 # 3 most important proteins
 sort(var_importance, decreasing = T)[1:3]
-
+  
 # regularization path
 load("results/anchor_opt/regPath.RData")
 gg_path <- plot(path, sqrt_scale = T)
 gg_path
+
+plotOOB(path)
+
 ggsave("figures/regPath.jpeg", 
        gg_path + theme_bw() + theme(legend.position = "none"), 
        width = 6, height = 3)
@@ -172,11 +175,15 @@ A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0
 # 3 most important proteins
 most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
 # timepoints of most important proteins
-times_imp <- table(sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)]))
-times_imp
+times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
+most_imp <- imp_to_shortnames(most_imp)
+most_imp <- paste(most_imp, paste0(times_imp, 'h'))
+
+times_imp <- table(times_imp)
+
 A_Results <- c(A_Results, paste0("Timepoints of 3 most important proteins: ", 
                                   paste(names(times_imp), times_imp, sep = ": ", collapse = ", ")))
-most_imp <- imp_to_shortnames(most_imp)
+
 A_Results <- c(A_Results, paste0("3 most important proteins: ", 
                                   paste(most_imp, collapse = ", ")))
 
@@ -190,15 +197,15 @@ save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelectio
 
 # partial dependence plots for the 3 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
   ylab(expression(widehat(IC50)))
-gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
   ggtitle("") + ylab("")
-gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + ylim(2, 15) + xlim(-1, 1) + 
+gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
   ggtitle("") + ylab("")
 
 library(gridExtra)
-ggdep <- grid.arrange(gg3, gg2, gg1, nrow =1)
+ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1)
 ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
 
 
