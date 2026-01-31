@@ -197,12 +197,12 @@ save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelectio
 
 # partial dependence plots for the 3 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
+gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+  ggtitle("") + ylab("") 
+gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+  ggtitle("") + ylab("")
+gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
   ylab(expression(widehat(IC50)))
-gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
-  ggtitle("") + ylab("")
-gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + #ylim(2, 15) + xlim(-1, 1) + 
-  ggtitle("") + ylab("")
 
 library(gridExtra)
 ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1)
