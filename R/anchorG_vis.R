@@ -177,7 +177,7 @@ most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
 # timepoints of most important proteins
 times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
-most_imp <- paste(most_imp, paste0(times_imp, 'h'))
+most_imp_h <- paste(most_imp, paste0(times_imp, 'h'))
 
 times_imp <- table(times_imp)
 
@@ -185,11 +185,11 @@ A_Results <- c(A_Results, paste0("Timepoints of 3 most important proteins: ",
                                   paste(names(times_imp), times_imp, sep = ": ", collapse = ", ")))
 
 A_Results <- c(A_Results, paste0("3 most important proteins: ", 
-                                  paste(most_imp, collapse = ", ")))
+                                  paste(most_imp_h, collapse = ", ")))
 
 # save most important proteins to txt as example
 fileConn2 <- file("results/most_important_proteins.txt")
-writeLines(most_imp, fileConn2)
+writeLines(most_imp_h, fileConn2)
 close(fileConn2)
 
 # save selected proteins
@@ -197,11 +197,11 @@ save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelectio
 
 # partial dependence plots for the 3 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-gg3 <- plot(dep3) + xlab(most_imp[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+gg3 <- plot(dep3) + xlab(most_imp_h[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
   ggtitle("") + ylab("") 
-gg2 <- plot(dep2) + xlab(most_imp[2]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+gg2 <- plot(dep2) + xlab(most_imp_h[2]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
   ggtitle("") + ylab("")
-gg1 <- plot(dep1) + xlab(most_imp[1]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+gg1 <- plot(dep1) + xlab(most_imp_h[1]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
   ylab(expression(widehat(IC50)))
 
 library(gridExtra)
