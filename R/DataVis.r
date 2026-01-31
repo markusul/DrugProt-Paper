@@ -6,32 +6,26 @@ library(dplyr)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
-load("data/aggData.RData")
-load("data/combData.RData")
 
 # number of time zero experiments per protein plate
 table(data[data$pert_time == 0, "protein_plate"])
 
 # Visualization of Protein expression
-X <- data[, prot_names]
+selection <- c("no")
+X <- data[data$pertLabel %in% selection, prot_names]
 umap_res <- umap(X, n_neighbors = 50, min_dist = 0.5)
-
-dim(comb_data)
-dim(data)
-dim(agg_data)
-
-dim(comb_data[comb_data$type == 'singleDrug', ])
-dim(data[data$type == 'singleDrug', ])
-dim(agg_data[agg_data$type == 'singleDrug', ])
 
 #plot UMAP
 umap_res <- data.frame(umap_res$layout)
-umap_res$IC50 <- data$IC50
-umap_res$protein_plate <- data$protein_plate
-umap_res$pert_time <- as.factor(data$pert_time)
-umap_res$pertLabel <- data$pertLabel
+umap_res$IC50 <- data$IC50[data$pertLabel %in% selection]
+umap_res$protein_plate <- data$protein_plate[data$pertLabel %in% selection]
+umap_res$pert_time <- as.factor(data$pert_time)[data$pertLabel %in% selection]
+umap_res$pertLabel <- data$pertLabel[data$pertLabel %in% selection]
 
-ggumap <- ggplot(umap_res, aes(x = X1, y = X2, color = pertLabel)) + 
+
+umap_res$pertLabel <- data$pertLabel[data$pertLabel %in% selection]
+
+ggumap <- ggplot(umap_res, aes(x = X1, y = X2, color = protein_plate)) + 
     geom_point(size = 0.5) + theme_bw() + 
     theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
