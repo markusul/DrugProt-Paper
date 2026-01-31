@@ -208,6 +208,12 @@ library(gridExtra)
 ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1)
 ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
 
+# comparison to plain model
+load("results/plainFit_full.RData")
+imp_plain_full <- sort(fit_plain_full$var_importance, decreasing = T)
+imp_plain_full[1:10]
+
+plot(var_importance, fit_plain_full$var_importance)
 
 # file to save results to
 fileConn <- file("results/A_Results.txt")

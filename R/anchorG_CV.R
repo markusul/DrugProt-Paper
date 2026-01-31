@@ -31,8 +31,8 @@ for(group in Groups){
 }
 envs <- as.factor(envs)
 
-# fit 200 trees for each environment left out
-trees_envs <- rep(200, length(levels(envs)))
+# fit 500 trees for each environment left out
+trees_envs <- rep(500, length(levels(envs)))
 names(trees_envs) <- levels(envs)
 trees_envs['0'] <- 0
 

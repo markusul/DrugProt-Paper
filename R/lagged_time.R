@@ -1,8 +1,7 @@
+print("start lagged time data preparation")
+
 load("data/prepData.RData")
 load("data/protNames.RData")
-
-# treat all no drug experiments equally (singleDrug/drugCombination experiments)
-data$pertLabel[data$pertLabel == 'no no'] <- 'no'
 
 # remove proteins with less than 11 unique values
 abundand <- apply(data[, prot_names], 2, function(x) length(unique(x)) > 10)
@@ -10,7 +9,7 @@ prot_names <- prot_names[abundand]
 
 # E[P0|C]
 dat0 <- data[data$pert_time == 0, ]
-dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = mean)
+dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = median)
 
 # sort drugs by information
 drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
@@ -102,6 +101,5 @@ for(i in 1:nrow(uniqueExp)){
   label[sel] <- i
 }
 datI$label <- label
-is.na(datI)
 
 save(datI, prot_names, pert_names, aggData, file = 'data/laggedData.RData')

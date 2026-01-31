@@ -1,3 +1,5 @@
+print("start data preparation")
+
 # Load required packages
 library(dplyr)
 library(tidyr)
