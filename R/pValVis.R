@@ -340,7 +340,7 @@ fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
                    arrows = T, zoom = T, charge = -20,
-                   opacityNoHover = TRUE, legend = T,
+                   opacityNoHover = TRUE, legend = F,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN
 
@@ -354,7 +354,7 @@ fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=T, charge = -10,
+                   arrows = T, zoom = T, legend=F, charge = -10,
                    opacityNoHover = TRUE,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN
@@ -444,33 +444,33 @@ Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.1)
 Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
 
 # plot
-Nodes_sum$size <- 10
+Nodes_sum$size <- 30
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 0.1, bounded = T,
+                   fontSize = 10, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
-                   arrows = T, zoom = T, charge = -20,
-                   opacityNoHover = TRUE, legend = T,
+                   arrows = T, zoom = T, charge = -300,
+                   opacityNoHover = TRUE, legend = F,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN
 
 saveWidget(fN, "figures/summary_sel2.html")
-webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 1)
+webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 2)
 
-Nodes_temp$size <- 10
+Nodes_temp$size <- 30
 fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 0.1, bounded = T,
+                   fontSize = 10, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=T, charge = -10,
+                   arrows = T, zoom = T, legend=F, charge = -100,
                    opacityNoHover = TRUE,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
 fN
 
 saveWidget(fN, "figures/temp_sel2.html")
-webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png")
+webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png", zoom = 2)
 
