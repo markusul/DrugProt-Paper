@@ -1,5 +1,6 @@
 library(tidyr)
 library(ggplot2)
+library(gridExtra)
 theme_set(theme_bw(base_size = 14))
 library(SDModels)
 set.seed(42)
@@ -138,7 +139,7 @@ all(stab_s == path_s)
 # overlap with important proteins
 sum(stab_s %in% imp_s)
 
-##check timeoints of regularized selection
+##check timepoints of regularized selection
 #number of important proteins
 length(path_s)
 A_Results <- c(A_Results, paste0("Number of selected proteins (regularization path, cp > 0.5): ", 
@@ -172,8 +173,8 @@ A_Results <- c(A_Results, paste0("Number of unique selected proteins (regulariza
 A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0.5): ", 
                                   paste(unique(path_s), collapse = ", ")))
 
-# 3 most important proteins
-most_imp <- which(var_importance >= sort(var_importance, decreasing = TRUE)[3])
+# 2 most important proteins
+most_imp <- sort(var_importance, decreasing = T)[1:2]
 # timepoints of most important proteins
 times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
@@ -195,17 +196,20 @@ close(fileConn2)
 # save selected proteins
 save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
 
-# partial dependence plots for the 3 most important proteins
+# partial dependence plots for the 2 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-gg3 <- plot(dep3) + xlab(most_imp_h[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
-  ggtitle("") + ylab("") 
-gg2 <- plot(dep2) + xlab(most_imp_h[2]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+#gg3 <- plot(dep3) + xlab(most_imp_h[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+#  ggtitle("") + ylab("")
+
+lab1 <- paste('differential log-protein expression', most_imp_h[2])
+
+gg2 <- plot(dep2, n_examples = 0) + xlab(most_imp_h[2]) + theme_bw() + ylim(6.25, 7) + xlim(-0.5, 0.5) + 
   ggtitle("") + ylab("")
-gg1 <- plot(dep1) + xlab(most_imp_h[1]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
+gg1 <- plot(dep1, n_examples = 0) + xlab(most_imp_h[1]) + theme_bw() + ylim(6.25, 7) + xlim(-0.5, 0.5) + 
+  ggtitle("") +
   ylab(expression(widehat(IC50)))
 
-library(gridExtra)
-ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1)
+ggdep <- grid.arrange(gg1, gg2, nrow =1, bottom = "Partial dependence on differential log-protein expression")
 ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
 
 # comparison to plain model
