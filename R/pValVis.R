@@ -114,6 +114,10 @@ P_Results <- c(P_Results, paste0("Number of significant drug effects on selected
 sum(pvec[!drugComb] < alpha)
 P_Results <- c(P_Results, paste0("Number of significant single drugs on selected proteins: ", 
                                   sum(pvec[!drugComb] < alpha)))
+P_Results <- c(P_Results, paste0("Significant single drugs on selected proteins: ", 
+                                paste(names(pvec[!drugComb][pvec[!drugComb] < alpha]), 
+                                      collapse = ", ")))
+
 
 # significant drug combinations on selected proteins
 sum(pvec[drugComb] < alpha)
@@ -320,7 +324,9 @@ ht
 
 #save heatmap
 saveWidget(as_widget(ht), "figures/ht_sel.html")
-webshot("figures/ht_sel.html", file = "figures/ht_sel.png")
+webshot("figures/ht_sel.html", file = "figures/ht_sel.png", zoom = 3, 
+        vwidth = 700,
+        vheight = 650, cliprect = c(200, 20, 480, 420))
 
 # zoom in on significant part of heatmap
 ht_zoom <- ht
@@ -330,7 +336,9 @@ ht_zoom <- ht_zoom %>% layout(xaxis = list(range = c(0, 11.5)),
          yaxis = list(tickfont = list(size = 20)))
 ht_zoom
 saveWidget(as_widget(ht_zoom), "figures/ht_zoom_sel.html")
-webshot("figures/ht_zoom_sel.html", file = "figures/ht_zoom_sel.png")
+webshot("figures/ht_zoom_sel.html", file = "figures/ht_zoom_sel.png", zoom = 3, 
+        vwidth = 700,
+        vheight = 650, cliprect = c(0, 20, 680, 650))
 
 Nodes_sum$size <- 10
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
@@ -345,7 +353,7 @@ fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
 fN
 
 saveWidget(fN, "figures/summary_sel.html")
-webshot("figures/summary_sel.html", file = "figures/summary_sel.png", zoom = 2, 
+webshot("figures/summary_sel.html", file = "figures/summary_sel.png", zoom = 3, 
         vwidth = 700,
         vheight = 700)
 
@@ -362,7 +370,7 @@ fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
 fN
 
 saveWidget(fN, "figures/temp_sel.html")
-webshot("figures/temp_sel.html", file = "figures/temp_sel.png", zoom  = 2,
+webshot("figures/temp_sel.html", file = "figures/temp_sel.png", zoom  = 3,
         vwidth = 700,
         vheight = 700)
 
@@ -447,38 +455,78 @@ Links_temp$value <- 1
 Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.1)
 Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
 
+
 # plot
+selected <- (which(Nodes_sum$group == "Selected")-1)
+connectingNodes <- !(table(c(selected, unlist(lapply(selected, function(sel){
+  unique(c(Links_sum[Links_sum$source == sel, "target"], 
+          Links_sum[Links_sum$target == sel, "source"]))
+})))) > 1)
+
 Nodes_sum$size <- 30
+Nodes_sum[connectingNodes, "name"] <- ""
+
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 15, bounded = T,
+                   fontSize =25, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
-                   arrows = T, zoom = T, charge = -200,
-                   opacityNoHover = TRUE, legend = F,
-                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+                   arrows = T, zoom = T, charge = -300,
+                   opacityNoHover = F, legend = F,
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"), 
+                   linkWidth = JS("function(d) { return Math.sqrt(d.value) * 2.5; }"), 
+                   linkColour = "lightgrey")
+fN <- onRender(
+  fN,
+  '
+  function(el,x) {
+    d3.select(el)
+      .selectAll(".node text")
+      .attr("text-anchor", "middle")
+      .attr("dx", "2.0em") // move label away from node
+      .attr("dy", "-0.05em") // move label away from node
+      .style("transform", "rotate(-25deg) translate(0,0)");
+  }
+  '
+)
 fN
 
 saveWidget(fN, "figures/summary_sel2.html")
-webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 2, 
-        vwidth = 700,
-        vheight = 700)
+webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 3, 
+        vwidth = 600,
+        vheight = 600, delay = 3)
+
+connectingNodes <- table(c(Links_temp$source, Links_temp$target)) < 2
 
 Nodes_temp$size <- 30
+Nodes_temp[connectingNodes, "name"] <- ""
 fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 15, bounded = T,
+                   fontSize = 25, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
                    arrows = T, zoom = T, legend=F, charge = -100,
                    opacityNoHover = TRUE,
-                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"), 
+                   linkWidth = JS("function(d) { return Math.sqrt(d.value) * 2; }"), 
+                   linkColour = "lightgrey")
+fN <- onRender(
+  fN,
+  '
+  function(el,x) {
+    d3.select(el)
+      .selectAll(".node text")
+      .attr("text-anchor", "start")
+      .style("transform", "rotate(-25deg)");
+  }
+  '
+)
 fN
 
 saveWidget(fN, "figures/temp_sel2.html")
-webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png", zoom = 2, 
-        vwidth = 700,
-        vheight = 700)
+webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png", zoom = 3, 
+        vwidth = 600,
+        vheight = 600)
 
