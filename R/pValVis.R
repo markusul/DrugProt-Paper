@@ -98,6 +98,18 @@ P_Results <- c(P_Results, paste0("Time point 6h: ", nSigDrug[1]))
 P_Results <- c(P_Results, paste0("Time point 24h: ", nSigDrug[2]))
 P_Results <- c(P_Results, paste0("Time point 48h: ", nSigDrug[3]))
 
+nSigDrug_oComb <- apply(allPvecsAdj[(nSingleDrugs+1):(nSingleDrugs + nComboDrugs), , ], 2, function(p) sum(p < alpha))
+nDrug_oComb <- nComboDrugs * nProt
+P_Results <- c(P_Results, "Number of significant drug effects (only combination) in the models over time")
+P_Results <- c(P_Results, paste0("Time point 6h: ", nSigDrug_oComb[1]))
+P_Results <- c(P_Results, paste0("Time point 24h: ", nSigDrug_oComb[2]))
+P_Results <- c(P_Results, paste0("Time point 48h: ", nSigDrug_oComb[3]))
+P_Results <- c(P_Results, "Percentage of significant drug combinations out of all interactions in the models over time")
+P_Results <- c(P_Results, paste0("Time point 6h: ", nSigDrug_oComb[1]/nDrug_oComb))
+P_Results <- c(P_Results, paste0("Time point 24h: ", nSigDrug_oComb[2]/nDrug_oComb))
+P_Results <- c(P_Results, paste0("Time point 48h: ", nSigDrug_oComb[3]/nDrug_oComb))
+
+
 #adjust p values of drug effects on selected proteins
 selPvecs <- allPvecs[, , P_selection]
 selPvecs <- array(p.adjust(selPvecs, method = "holm"), dim = dim(selPvecs))
