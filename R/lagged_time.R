@@ -16,10 +16,15 @@ drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
 
 # collect protein names in short
-prot_names_short <- sapply(prot_names, function(p) 
-  grep("_HUMAN", strsplit(p, '[.]')[[1]], value = T))
-prot_names_short <- sapply(prot_names_short, function(p) 
-  paste0(sapply(strsplit(p, "_"), "[[", 1), collapse = "/"))
+prot_names_short <- sapply(prot_names, function(p) {
+  parts     <- strsplit(p, '[.]')[[1]]
+  human_idx <- grep("_HUMAN", parts)
+  n         <- length(human_idx)
+  # gene symbols are the n fields immediately following the LAST _HUMAN field
+  last_human <- max(human_idx)
+  genes      <- parts[(last_human + 1):(last_human + n)]
+  paste0(genes, collapse = "/")
+})
 
 # save order and short names
 save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names)
