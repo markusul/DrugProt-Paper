@@ -104,6 +104,13 @@ load("results/anchor_opt/var_importance.RData")
 plot(var_importance)
 plot(sort(var_importance, decreasing = T))
 
+times <- sapply(strsplit(names(sort(var_importance, decreasing = T)), '_'), function(x) x[length(x)])
+par(mfrow = c(1, 4))
+boxplot(which(times == "0"), ylim = c(0, 20000))
+boxplot(which(times == "6"), ylim = c(0, 20000))
+boxplot(which(times == "24"), ylim = c(0, 20000))
+boxplot(which(times == "48"), ylim = c(0, 20000))
+
 # 40 most important proteins
 imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
 # 3 most important proteins
