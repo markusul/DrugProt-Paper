@@ -21,8 +21,12 @@ prot_names_short <- sapply(prot_names, function(p)
 prot_names_short <- sapply(prot_names_short, function(p) 
   paste0(sapply(strsplit(p, "_"), "[[", 1), collapse = "/"))
 
+expTimes <- sort(unique(data$pert_time))[-1]
+nTreatment <- length(unique(data[, "pertLabel"]))-2
+
 # save order and short names
-save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names)
+save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names, 
+     expTimes, nTreatment)
 
 # add E[P0|C] to data
 names(dat0)[-1] <- paste0(names(dat0)[-1], "_0")

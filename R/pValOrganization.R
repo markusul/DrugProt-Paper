@@ -60,12 +60,14 @@ Pval_all <- lapply(c(24, 48), function(t){
 save(Pval_all, file = "results/proteinNetworkPval.RData")
 
 # save p values minimalistically 
-pvalue <- cbind(Pval_all[[1]][, "pvalue"], Pval_all[[2]][, "pvalue"])
+pvalue <- lapply(Pval_all, function(P) P[, "pvalue"])
+pvalue <- do.call(cbind, pvalue)
+
 save(pvalue, file = "results/proteinNetworkPval_pvalue.RData")
 
-pvalue <- Pval_all[[1]][, "pvalue"]
-save(pvalue, file = "results/proteinNetworkPval_pvalue_24h.RData")
-pvalue <- Pval_all[[2]][, "pvalue"]
-save(pvalue, file = "results/proteinNetworkPval_pvalue_48h.RData")
+for (t  in expTimes[-1]) {
+  pvalue <- Pval_all[[1]][, "pvalue"]
+  save(pvalue, file = paste0("results/proteinNetworkPval_pvalue_", t, "h.RData"))
+}
 
 
