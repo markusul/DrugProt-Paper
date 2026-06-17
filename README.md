@@ -6,7 +6,7 @@ All the statistical analysis was run on the [*Euler*](https://scicomp.ethz.ch/wi
 `slurm` folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and sessionInfo.txt for details about the used libraries. The experiment will need the following folders and the proteomics measurement `ProteinMatrix_sampleID_MapEC50_20240229.csv`.
 
 ```
-📂 DrugProt
+📂 DrugProt-Paper
 ├── 📂 R
 ├── 📂 Z
 ├── 📂 data
