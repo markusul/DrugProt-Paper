@@ -3,7 +3,7 @@
 This repository contains all the code used for the paper "[*Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks*]()" by Markus Ulmer, Rui Sun, Liujia Qian, Ruedi Aebersold, Tiannan Guo, and Peter Bühlmann (2026).
 
 All the statistical analysis was run on the [*Euler*](https://scicomp.ethz.ch/wiki/Euler) using the batch jobs in the 
-`slurm` folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and sessionInfo.txt for details about the used libraries. The experiment will need the following folders and the proteomics measurement `ProteinMatrix_sampleID_MapEC50_20240229.csv`.
+`slurm` folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and sessionInfo.txt for details about the used libraries. The experiment will need the following folders and the proteomics measurement `ProteinMatrix_sampleID_MapEC50_20240229.csv`. The input matrix is from [*Sun, R., Qian, L., Li, Y., et al. (2025). A perturbation proteomics-based foundation model for virtual cell construction.*](https://doi.org/10.1101/2025.02.07.637070) and will be available on its publication.
 
 ```
 📂 DrugProt-Paper
