@@ -65,9 +65,3 @@ pvalue <- do.call(cbind, pvalue)
 
 save(pvalue, file = "results/proteinNetworkPval_pvalue.RData")
 
-for (t  in expTimes[-1]) {
-  pvalue <- Pval_all[[1]][, "pvalue"]
-  save(pvalue, file = paste0("results/proteinNetworkPval_pvalue_", t, "h.RData"))
-}
-
-
