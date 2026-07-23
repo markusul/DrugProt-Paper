@@ -37,6 +37,19 @@ Once the pipeline is complete, run these R scripts to generate figures:
 2.  `pValOrganization.R`: **Organizes** the p-values from `DrugProt` for visualization.
 3.  `pValVis.R`: **Visualizes** the p-values from `DrugProt` and saves findings to `results/P_Results.txt`.
 
+### 3. Database & Export
+These scripts turn the model output in `results/` into the artifacts published in the [Drug-Prot data deposit](https://doi.org/[DATA-DOI]): the Parquet store that backs the [Shiny application](https://github.com/markusul/DrugProt), and the human-readable CSV export. Run them after the analysis pipeline has completed.
+
+1.  `buildDatabase.R`: Collects all p-values and coefficients into a single indexed SQLite database.
+2.  `sqliteToParquet.R`: Converts that database into one compressed Parquet file per table.
+3.  `exportPvaluesWithEffects.R`: Writes the human-readable CSV export, with effect magnitudes attached per row.
+
+> *Note: `sqliteToParquet.R` exports every table it finds, including SQLite's internal `sqlite_stat1` and `sqlite_stat4` tables created by the closing `ANALYZE`. Remove these before publishing the Parquet directory.*
+
+> *Note: `buildDatabase.R` stores only the **sign** of the protein-network coefficients, which is all the application needs to colour edges. `exportPvaluesWithEffects.R` therefore reads the magnitudes directly from `results/Coef/`, and must run where `results/` is still available.*
+
+To deploy the application locally, copy `data/parquet/` into the root of the [DrugProt](https://github.com/markusul/DrugProt) repository as `parquet/`.
+
 ## More details on the different scripts
 
 <details>
@@ -54,7 +67,7 @@ Once the pipeline is complete, run these R scripts to generate figures:
 | :--- | :--- | :--- |
 | `R/getZ.R` | `data/laggedData.RData` | `Z/6.RData`<br>`Z/24.RData`<br>`Z/48.RData` |
 | `R/drugInteraction.R` | `data/laggedData.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData` | `results/DrugEffects/...`<br>`results/ProteinEffects/...` |
-| `R/pValOrganization.R` | `data/order.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/DrugEffects.RData`<br>`results/proteinNetworkPval.RData` |
+| `R/pValOrganization.R` | `data/order.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/DrugEffects.RData`<br>`results/proteinNetworkPval.RData`<br>`results/proteinNetworkPval_pvalue.RData` |
 | `R/pValVis.R` | `data/drugLookup.RData`<br>`data/order.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData`<br>`results/proteinNetworkPval.RData`<br>`results/anchor_opt/proteinSelection.RData` | **All P-value Plots**<br>`results/P_Results.txt` |
 
 ### 3. Anchor Forest Analysis
@@ -64,6 +77,14 @@ Once the pipeline is complete, run these R scripts to generate figures:
 | `R/anchorG_opt.R` | `R/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData` | `results/anchorG_opt.RData` |
 | `R/anchorG_opt_res.R` | `results/anchorG_opt.RData` | `results/anchor_opt/var_importance.RData`<br>`results/anchor_opt/regPath.RData`<br>`results/anchor_opt/stability_selection.RData`<br>`results/anchor_opt/partial_dependence.RData` |
 | `R/anchorG_vis.R` | `R/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData`<br>`data/order.RData`<br>`results/anchorG/...`<br>`results/anchor_opt/var_importance.RData`<br>`results/anchor_opt/regPath.RData`<br>`results/anchor_opt/stability_selection.RData`<br>`results/anchor_opt/partial_dependence.RData` | **Anchor Forest Plots**<br>`results/A_Results.txt`<br>`results/anchor_opt/proteinSelection.RData`<br>`results/most_important_proteins.txt` |
+
+### 4. Database and Export
+
+| Script | Needs (Input) | Generates (Output) |
+| :--- | :--- | :--- |
+| `R/buildDatabase.R` | `data/order.RData`<br>`data/drugLookup.RData`<br>`results/DrugEffects.RData`<br>`results/proteinNetworkPval_pvalue.RData`<br>`results/Coef/drugs/treatNames.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/drugprot.sqlite` |
+| `R/sqliteToParquet.R` | `data/drugprot.sqlite` | `data/parquet/*.parquet` |
+| `R/exportPvaluesWithEffects.R` | `data/parquet/`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/downloads/drug_pvalues_effects.csv.gz`<br>`data/downloads/protein_network_effects.csv.gz` |
 
 </details>
 
@@ -137,6 +158,24 @@ graph TD
         S11 --> Out4[results/A_Results.txt]:::output
     end
     
+    subgraph Database ["**Database & Export**"]
+        S12(R/buildDatabase.R):::script
+        S13(R/sqliteToParquet.R):::script
+        S14(R/exportPvaluesWithEffects.R):::script
+
+        Coef[results/Coef/*]:::file
+        R8[results/proteinNetworkPval_pvalue.RData]:::file
+
+        D1 & D6 & R3 & R8 & Coef --> S12
+        S12 --> DB[data/drugprot.sqlite]:::file
+        DB --> S13
+        S13 --> PQ[data/parquet/*]:::file
+        PQ & Coef --> S14
+        S14 --> CSV[data/downloads/*.csv.gz]:::output
+    end
+
+    S6 --> R8
+
     %% Connect visualization back to data if needed
     S11 -.->|Generates| Sel[results/anchor_opt/proteinSelection.RData]:::file
     Sel -.-> S7
