@@ -38,7 +38,7 @@ Once the pipeline is complete, run these R scripts to generate figures:
 3.  `pValVis.R`: **Visualizes** the p-values from `DrugProt` and saves findings to `results/P_Results.txt`.
 
 ### 3. Database & Export
-These scripts turn the model output in `results/` into the artifacts published in the [Drug-Prot data deposit](https://doi.org/[DATA-DOI]): the Parquet store that backs the [Shiny application](https://github.com/markusul/DrugProt), and the human-readable CSV export. Run them after the analysis pipeline has completed.
+These scripts turn the model output in `results/` into the artifacts published in the [Drug-Prot data deposit](https://doi.org/10.5281/zenodo.21508013): the Parquet store that backs the [Shiny application](https://github.com/markusul/DrugProt), and the human-readable CSV export. Run them after the analysis pipeline has completed.
 
 1.  `buildDatabase.R`: Collects all p-values and coefficients into a single indexed SQLite database.
 2.  `sqliteToParquet.R`: Converts that database into one compressed Parquet file per table.
