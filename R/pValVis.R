@@ -329,14 +329,66 @@ pMat <- pMat[drugOrder, drugOrder]
 
 ##### Visualizations #####
 # plot heatmap of drug effects
+pMat[pMat == 2] <- NA
+
+hover <- matrix(NA_character_, nrow(pMat), ncol(pMat))
+
+for (i in seq_len(nrow(pMat))) {
+  for (j in seq_len(ncol(pMat))) {
+    lab <- if (i == j) {
+      colnames(pMat)[i]
+    } else {
+      paste(colnames(pMat)[i], "+", colnames(pMat)[j])
+    }
+    hover[i, j] <- if (is.na(pMat[i, j])) {
+      paste0(lab, "<br>no data")
+    } else {
+      paste0(lab, "<br>p-value = ", signif(pMat[i, j], 3))
+    }
+  }
+}
+
 ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat), 
-              type = "heatmap", colors = "Greys",
-              colorbar = list(title = "<b> P-Values </b>"))
+              type = "heatmap", colors = "Greys", text = hover, hoverinfo = "text",
+              colorbar = list(title = "<b> P-Values </b>")) %>% layout(plot_bgcolor = "#10bee0")
+ht
+
+ht <- plot_ly(z = pMat, x = colnames(pMat), y = colnames(pMat),
+              type = "heatmap",
+              zmin = 0, zmax = 1,
+              colorscale = list(
+                list(0.00, "#ffffff"),
+                list(0.01, "#d9d9d9"),
+                list(0.05, "#969696"),
+                list(0.10, "#737373"),
+                list(0.25, "#404040"),
+                list(0.50, "#1a1a1a"),
+                list(1.00, "#000000")
+              ),
+              text = hover, hoverinfo = "text",
+              colorbar = list(title = "<b> P-Values </b>",
+                              tickvals = c(0, 0.05, 0.25, 0.5, 1))) %>%
+  layout(
+    plot_bgcolor = "#10bee0",
+    margin = list(r = 160),
+    shapes = list(list(
+      type = "rect", xref = "paper", yref = "paper",
+      x0 = 1.02, x1 = 1.05, y0 = 0.10, y1 = 0.14,
+      fillcolor = "#10bee0",
+      line = list(color = "#888888", width = 1)
+    )),
+    annotations = list(list(
+      xref = "paper", yref = "paper",
+      x = 1.06, y = 0.12, xanchor = "left", yanchor = "middle",
+      text = "No data", showarrow = FALSE,
+      font = list(size = 12)
+    ))
+  )
 ht
 
 #save heatmap
 saveWidget(as_widget(ht), "figures/ht_sel.html")
-webshot("figures/ht_sel.html", file = "figures/ht_sel.png", zoom = 3, 
+webshot("figures/ht_sel.html", file = "figures/ht_sel.png", zoom = 8, 
         vwidth = 700,
         vheight = 650, cliprect = c(200, 20, 480, 420))
 
@@ -348,7 +400,7 @@ ht_zoom <- ht_zoom %>% layout(xaxis = list(range = c(0, 11.5)),
          yaxis = list(tickfont = list(size = 20)))
 ht_zoom
 saveWidget(as_widget(ht_zoom), "figures/ht_zoom_sel.html")
-webshot("figures/ht_zoom_sel.html", file = "figures/ht_zoom_sel.png", zoom = 3, 
+webshot("figures/ht_zoom_sel.html", file = "figures/ht_zoom_sel.png", zoom = 8, 
         vwidth = 700,
         vheight = 650, cliprect = c(0, 20, 680, 650))
 
