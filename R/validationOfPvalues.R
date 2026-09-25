@@ -28,7 +28,6 @@ D <- datI[datI$pert_time == tp, pert_names]
 
 ## prepare design matrix with interactions
 drug_design <- model.matrix(~ -1 + .^2, data = D)
-dLabels <- c(colnames(drug_design), colnames(drug_design))
 
 # remove treatments without data
 with_data <- apply(drug_design, 2, function(x) length(unique(x))) != 1
@@ -59,6 +58,7 @@ if(laggedTime > 0){
   # remove samples without lagged protein measurements
   noLagged <- rowSums(is.na(design)) > 0
   design <- design[!noLagged, ]
+  datI <- datI[datI$pert_time == tp, ][!noLagged, ]
 }
 
 res <- lapply(sampleP_vec, function(sampleP){
@@ -80,43 +80,47 @@ res <- lapply(sampleP_vec, function(sampleP){
   Y_mu <- design %*% sampledEffects
   sigma <- sd(Y_true - Y_mu)
   
+  nOut <- length(dLabels_measured) + if(laggedTime > 0) length(prot_names) else 0
   res <- parallel::mclapply(1:nRep, mc.cores = 100, function(i){
-    print(i)
-    Y <- Y_mu + rnorm(length(Y_mu), 0, sigma)
-    
-    #hdi fit with robustness against model misspecifications
-    fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
-    
-    # apply group testing for each treatments (intercept and effect)
-    nDrugs <- ncol(D)
-    pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = FALSE)})
-    
-    estim_effects <- pval.drugs < alpha
-    
-    
-    # return p values for protein effects
-    if(laggedTime > 0){
-      pval <- fit$pval
-      pval <- pval[(length(dlabels_model)+1):length(pval)]
+    tryCatch({
+      Y <- Y_mu + rnorm(length(Y_mu), 0, sigma)
+      fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
       
-      estim_effects <- c(estim_effects, pval < alpha)
+      pval.drugs <- sapply(dLabels_measured, function(l){
+        fit$groupTest(which(dlabels_model == l), conservative = FALSE)
+      })
+      estim_effects <- pval.drugs < alpha
       
-    }
-    estim_effects
+      if(laggedTime > 0){
+        pval <- fit$pval[(length(dlabels_model) + 1):length(fit$pval)]
+        estim_effects <- c(estim_effects, pval < alpha)
+      }
+      estim_effects
+    }, error = function(e){
+      message("tp ", tp, ", protein ", sampleP, ", rep ", i, ": ", conditionMessage(e))
+      rep(NA, nOut)
+    })
   })
+  
+  # safety net: anything that still isn't a proper vector (e.g. a killed fork)
+  bad <- vapply(res, function(r) inherits(r, "try-error") || length(r) != nOut, logical(1))
+  res[bad] <- list(rep(NA, nOut))
+  
+  resMat <- do.call(cbind, res)
+  nFailed <- sum(colSums(is.na(resMat)) == nOut)
+  ratioOfEffects <- rowMeans(resMat, na.rm = TRUE)
+  
   true_effects <- apply(drugEffects, 1, function(x) any(x != 0))
   if(laggedTime > 0){
-    true_effects <- c(true_effects, betahat)
+    true_effects <- c(true_effects, betahat != 0)
   }
-  
-  ratioOfEffects <- rowMeans(do.call(cbind, res))
   
   group <- c(rep("single", 63), rep("double", 59))
   if(laggedTime > 0) group <- c(group, rep("protein", length(prot_names)))
   
   type1 <- tapply(ratioOfEffects[!true_effects], group[!true_effects], mean)
   power <- tapply(ratioOfEffects[true_effects], group[true_effects], mean)
-  list(type1 = type1, power = power)
+  list(type1 = type1, power = power, nFailed = nFailed)
 })
 do.call(rbind, res)
 })
