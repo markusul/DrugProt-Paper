@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=48:00:00
+#SBATCH --time=72:00:00
 #SBATCH --job-name="PAnal"
 #SBATCH --mem-per-cpu=10GB
 #SBATCH --output=outfiles/PAnal.out
