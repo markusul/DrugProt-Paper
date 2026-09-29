@@ -594,3 +594,56 @@ webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png", zoom = 3,
         vwidth = 600,
         vheight = 600)
 
+
+
+##### visualization of empirical validation of p-values #####
+
+load("results/PvalAnalysis.RData")
+
+library(ggplot2)
+
+expTimes <- c(6, 24, 48)
+alpha <- 0.05
+
+# long format: one row per protein x time point x metric x effect type
+df <- do.call(rbind, lapply(seq_along(res), function(t){
+  m <- res[[t]]
+  do.call(rbind, lapply(seq_len(nrow(m)), function(k){
+    do.call(rbind, lapply(c("type1", "power"), function(met){
+      v <- m[[k, met]]
+      if(length(v) == 0) return(NULL)
+      data.frame(tp = expTimes[t], protein = k, metric = met,
+                 group = names(v), value = as.numeric(v))
+    }))
+  }))
+}))
+df <- df[is.finite(df$value), ]
+
+df$tp <- factor(df$tp, levels = expTimes, labels = paste(expTimes, "h"))
+df$metric <- factor(df$metric, levels = c("type1", "power"),
+                    labels = c("Type I error", "Power"))
+df$group <- factor(df$group, levels = c("single", "double", "protein"),
+                   labels = c("Single drug", "Drug pair", "Lagged protein"))
+
+alpha_line <- data.frame(metric = factor("Type I error", levels = levels(df$metric)),
+                         y = alpha)
+
+p <- ggplot(df, aes(x = group, y = value, fill = group, color = group)) +
+  #geom_boxplot(linewidth = 0.6, outlier.size = 0.8) +
+  geom_point() +
+  geom_hline(data = alpha_line, aes(yintercept = y),
+             linetype = "dashed", linewidth = 0.8, colour = "grey30") +
+  facet_grid(metric ~ tp, scales = "free", space = "free_x") +
+  scale_fill_manual(values = c("Single drug" = "#0072B2",
+                               "Drug pair" = "#E69F00",
+                               "Lagged protein" = "#009E73")) +
+  labs(x = "Effect type", y = "Rejection rate") +
+  theme_bw(base_size = 13) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1))
+
+p
+ggsave("results/PvalAnalysis.pdf", p, width = 8, height = 6)
+
+
+
