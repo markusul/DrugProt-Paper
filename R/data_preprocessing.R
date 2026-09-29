@@ -13,7 +13,7 @@ na_imputation <- function(x) {
 # Load data
 dat <- read.csv("data/ProteinMatrix_sampleID_MapEC50_20240229.csv")
 
-# Create drug lookup
+# Create drug look-up
 # What drug number corresponds to which drug name
 drugnames <- unique(dat[, c('pert_iname', 'pert_id')])
 drug_lookup <- setNames(drugnames$pert_iname, drugnames$pert_id)

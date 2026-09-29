@@ -628,9 +628,9 @@ df$group <- factor(df$group, levels = c("single", "double", "protein"),
 alpha_line <- data.frame(metric = factor("Type I error", levels = levels(df$metric)),
                          y = alpha)
 
-p <- ggplot(df, aes(x = group, y = value, fill = group, color = group)) +
-  #geom_boxplot(linewidth = 0.6, outlier.size = 0.8) +
-  geom_point() +
+p <- ggplot(df, aes(x = group, y = value, fill = group)) +
+  geom_boxplot(linewidth = 0.6, outlier.size = 0.8) +
+  #geom_point() +
   geom_hline(data = alpha_line, aes(yintercept = y),
              linetype = "dashed", linewidth = 0.8, colour = "grey30") +
   facet_grid(metric ~ tp, scales = "free", space = "free_x") +
@@ -643,7 +643,7 @@ p <- ggplot(df, aes(x = group, y = value, fill = group, color = group)) +
         axis.text.x = element_text(angle = 30, hjust = 1))
 
 p
-ggsave("results/PvalAnalysis.pdf", p, width = 8, height = 6)
+ggsave("figures/PvalAnalysis.png", p, width = 8, height = 6)
 
 
 
