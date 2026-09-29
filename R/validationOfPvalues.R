@@ -19,6 +19,7 @@ sampleP_vec <- sample(1:length(prot_names), nEffects, replace = F)
 nRep <- 200
 
 res <- lapply(expTimes, function(tp){
+print(paste0("Analyzing time point ", tp, "h"))
 
 # load projections
 load(paste0('Z/', tp, '.RData'))
@@ -62,6 +63,8 @@ if(laggedTime > 0){
 }
 
 res <- lapply(sampleP_vec, function(sampleP){
+  print(paste0("Analyzing protein ", prot_names[sampleP]))
+
   ####### simulate Y ######
   file <- paste0("results/DrugEffects/", sampleP, "_", tp, ".RData")
   load(file)
