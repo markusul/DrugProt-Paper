@@ -10,7 +10,6 @@ module load r/4.4.0
 
 export OMP_NUM_THREADS=1
 
-Rscript --vanilla R/data_preprocessing.R
-Rscript --vanilla R/data_preparation.R
-Rscript --vanilla R/lagged_time.R
-
+Rscript --vanilla R/preprocessing/data_preprocessing.R
+Rscript --vanilla R/preprocessing/data_preparation.R
+Rscript --vanilla R/preprocessing/lagged_time.R

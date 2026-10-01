@@ -10,4 +10,4 @@ module load r/4.4.0
 
 export OMP_NUM_THREADS=1
 
-Rscript --vanilla R/drugInteraction.R
+Rscript --vanilla R/pvalues/drugInteraction.R

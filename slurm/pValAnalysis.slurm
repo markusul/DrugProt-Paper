@@ -10,4 +10,4 @@ module load r/4.4.0
 
 export OMP_NUM_THREADS=1
 
-Rscript --vanilla R/validationOfPvalues.R
+Rscript --vanilla R/pvalues/validationOfPvalues.R

@@ -10,4 +10,4 @@ module load r/4.4.0
 
 export OMP_NUM_THREADS=1
 
-Rscript --vanilla R/anchorG_opt_res.R
+Rscript --vanilla R/anchorForest/anchorG_opt_res.R
