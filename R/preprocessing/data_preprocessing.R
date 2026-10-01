@@ -1,36 +1,39 @@
-print("start reconstruction from public data")
+print("start data preprocessing")
 
 # ---------------------------------------------------------------------------
-# reconstructFromPublic.R
+# data_preprocessing.R
 #
-# Rebuilds data/prepData.RData from the public release of Sun et al.
-# (Nature 2026, doi:10.1038/s41586-026-11001-9) together with the three
-# reconstruction inputs deposited on Zenodo. It replaces the non-public file
-# ProteinMatrix_sampleID_MapEC50_20240229.csv that data_preprocessing.R
-# originally consumed.
+# Assembles the analysis input of Drug-Prot, one row per sample, holding
+# log protein expressions, the drug concentration matrix, the experimental
+# annotation and the viability readout.
 #
 # Inputs, all in data/:
-#   01_sample_info.xlsx                from db.prottalks.com
-#   02_protein_intensity_matrix.xlsx   from db.prottalks.com
-#   protein_names.csv                  from the Zenodo deposit
-#   analysis_samples.csv               from the Zenodo deposit
-#   ic50_values.csv                    from the Zenodo deposit
+#   01_sample_info.xlsx                sample annotation, db.prottalks.com
+#   02_protein_intensity_matrix.xlsx   protein intensities, db.prottalks.com
+#   protein_names.csv                  protein identifiers
+#   analysis_samples.csv               sample selection and treatment labels
+#   ic50_values.csv                    viability readout
 #
 # Outputs:
-#   data/prepData.RData
-#   data/drugLookup.RData
-#   data/na_count.RData
+#   data/prepData.RData    the analysis input
+#   data/drugLookup.RData  drug identifier to drug name
+#   data/na_count.RData    fraction of missing values per protein
 #
-# All protein measurements come from the public release. The deposited CSVs
-# carry identifiers, the analysis sample selection, and the viability values,
-# none of which can be derived from it.
+# The protein measurements come from the intensity matrix of Sun et al.
+# (Nature 2026, doi:10.1038/s41586-026-11001-9). The three CSV files record
+# the conventions of this analysis, which the matrix does not carry: which
+# samples are used, the order in which each drug pair is written, the cell
+# line naming, the protein column identifiers, and the viability values.
+# See the Drug-Prot data deposit for their description.
 #
-# The public release contains more samples than the analysis used, including
-# 1117 untreated controls against 840. Since the baseline is a per-cell-line
-# median over the controls, using all of them would shift every differential
-# expression, so the selection is applied. Of the 15002 recorded samples,
-# 158 are technical replicates with no row in the public sample annotation,
-# leaving 14844.
+# Two points about the sample selection. The released dataset contains more
+# samples than are used here, among them 1117 untreated controls against the
+# 840 of this analysis, which are those meeting complete biological
+# triplicate and full factorial design criteria. Since the baseline is a
+# per-cell-line median over the controls, the selection determines every
+# differential expression. And of the 15002 selected samples, 158 are
+# technical replicates that appear in the intensity matrix but not in the
+# sample annotation, so 14844 enter the analysis.
 # ---------------------------------------------------------------------------
 
 library(dplyr)
@@ -65,11 +68,11 @@ ic50_values      <- read.csv("data/ic50_values.csv", stringsAsFactors = FALSE)
 protein_columns <- protein_names$protein[order(protein_names$row)]
 stopifnot(nrow(PTV1) == length(protein_columns))
 
-# Guard against a reordering of the published matrix. Compare the first gene
-# symbol of each row against the corresponding original column name. Protein
-# groups use semicolons in the public file and periods in the original, and
-# 68 rows carry no gene symbol, so those rows are excluded from the check
-# rather than counted as failures.
+# Guard against a reordering of the intensity matrix. Compare the first gene
+# symbol of each row against the corresponding entry of protein_names.csv.
+# Protein groups separate symbols by semicolons in the matrix and by periods
+# in the identifiers, and 68 rows carry no gene symbol, so those rows are
+# excluded from the check rather than counted as failures.
 first_gene <- sub("[;,/].*", "", PTV1$geneName)
 checkable <- !is.na(first_gene) & nzchar(first_gene)
 gene_ok <- mapply(function(g, nm) grepl(g, nm, fixed = TRUE),
@@ -112,7 +115,7 @@ data_protein <- as.data.frame(intensity)
 data_protein <- data_protein[, apply(data_protein, 2, function(x) length(unique(x))) > 1]
 data_protein <- data_protein[, grepl("HUMAN", names(data_protein))]
 
-cat("protein columns after filtering:", ncol(data_protein), "(original pipeline: 5519)\n")
+cat("protein columns after filtering:", ncol(data_protein), "\n")
 
 # Analyze missing values
 na_count <- colMeans(is.na(data_protein))
@@ -124,9 +127,9 @@ data_protein <- log(data_protein)
 
 # ---- Drug annotation -------------------------------------------------------
 
-# Taken from the deposited selection rather than rebuilt from the public
-# file, because the order within a drug pair and the cell line naming are
-# conventions of the original analysis.
+# Taken from analysis_samples.csv rather than from the sample annotation,
+# because the order within a drug pair and the cell line naming are
+# conventions of this analysis.
 pert_id      <- sel$pert_id
 pertLabel    <- sel$pertLabel
 Anchor_dose  <- sel$Anchor_dose
@@ -136,10 +139,9 @@ cell_line    <- sel$cell_line
 
 combination_idx <- which(pert_id == "")
 
-# Cross-check the doses against the public annotation, which records them
-# per sample. Single drugs are written as 10 and 0 in the deposit, whereas
-# the public file leaves the second field empty, so only combinations are
-# compared.
+# Cross-check the doses against the sample annotation, which records them
+# per sample. Only combinations are compared, since the two sources use
+# different conventions for single drugs.
 pub_A <- suppressWarnings(as.numeric(info$Pert_Does1))
 pub_L <- suppressWarnings(as.numeric(info$Pert_Does2))
 mism <- combination_idx[
@@ -148,7 +150,7 @@ mism <- combination_idx[
 ]
 if (length(mism)) {
   warning(length(mism), " combination samples disagree on dose between the ",
-          "deposit and the public annotation")
+          "analysis_samples.csv and the sample annotation")
 }
 
 # Create drug lookup
@@ -191,9 +193,9 @@ data_drugs <- data_drugs[, !colnames(data_drugs) %in% c("drug_", "drug_no")]
 
 # ---- Additional metadata ---------------------------------------------------
 
-# The original file records both dose fields as 0 for single drugs, since
-# the concentration is implicit in the drug dummy. That convention is
-# restored here, because data_preparation.R groups on these columns.
+# Both dose fields are 0 for single drugs, since the 10 micromole
+# concentration is implicit in the drug indicator. data_preparation.R groups
+# on these columns, so the convention matters.
 out_A <- Anchor_dose
 out_L <- Library_dose
 is_single <- pert_id != "" & pert_id != "no"
