@@ -121,9 +121,10 @@ res <- lapply(sampleP_vec, function(sampleP){
   group <- c(rep("single", 63), rep("double", 59))
   if(laggedTime > 0) group <- c(group, rep("protein", length(prot_names)))
   
-  type1 <- ratioOfEffects[!true_effects]
-  power <- ratioOfEffects[true_effects]
-  list(type1 = type1, power = power, group = group, nFailed = nFailed)
+  list(coef = data.frame(group = group,
+                         true_effect = true_effects,
+                         rate = ratioOfEffects),
+       nFailed = nFailed)
 })
 do.call(rbind, res)
 })
