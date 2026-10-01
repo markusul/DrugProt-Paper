@@ -38,7 +38,15 @@ lapply(expTimes, function(tp){
   #protein design
   laggedTime <- which(expTimes == tp) - 1
   
-  if(laggedTime > 0){
+  modes <- 1
+
+  if(laggedTime > 0) modes <- c(1, 2)
+  # mode 2 corresponds to estimating the total causal effect of drug onto protein
+  # mode 1 direct causal effect (potentially confounded for later time points)
+
+  for(mode in modes){
+
+  if(laggedTime > 0 & mode == 1){
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
 
     # differential expression to baseline
@@ -72,14 +80,19 @@ lapply(expTimes, function(tp){
   effects.drugs.debiased <- lapply(dLabels_measured, function(l){fit$bhat[which(dlabels_model == l)]})
   names(effects.drugs.debiased) <- dLabels_measured
 
-  save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '.RData'), 
-       pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
+  if(mode == 2){
+    save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '_mode2.RData'), 
+         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
+  }else{
+    save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '.RData'), 
+         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
+  }
   
   pval <- NULL
   bhat <- NULL
   betahat <- NULL
   # return p values for protein effects
-  if(laggedTime > 0){
+  if(laggedTime > 0 & mode == 1){
     pval <- fit$pval
     pval <- pval[(length(dlabels_model)+1):length(pval)]
 
@@ -90,8 +103,16 @@ lapply(expTimes, function(tp){
     betahat <- fit$betahat
     betahat <- betahat[(length(dlabels_model)+1):length(betahat)]
   }
-  save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', tp, '.RData'), 
-       pval, prot_names, P, tp, bhat, betahat)
+
+  if(mode == 2){
+    save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', tp, '_mode2.RData'), 
+         pval, prot_names, P, tp, bhat, betahat)
+  }else{
+    save(file = paste0('results/ProteinEffects/', which(prot_names == P) , '_', tp, '.RData'), 
+         pval, prot_names, P, tp, bhat, betahat)
+  }
+      
+  }
 })
 })
 

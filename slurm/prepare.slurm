@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --time=24:00:00
 #SBATCH --job-name="prepare data"
-#SBATCH --mem-per-cpu=20GB
+#SBATCH --mem-per-cpu=50GB
 #SBATCH --output=outfiles/prep.out
 #SBATCH --cpus-per-task=1
 
