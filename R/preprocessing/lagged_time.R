@@ -1,4 +1,5 @@
 print("start lagged time data preparation")
+set.seed(22)
 
 load("data/prepData.RData")
 load("data/protNames.RData")

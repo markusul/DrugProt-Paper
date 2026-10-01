@@ -647,3 +647,17 @@ ggsave("figures/PvalAnalysis.png", p, width = 8, height = 6)
 
 
 
+load("data/laggedData.RData")
+expTimes <- c(6, 24, 48)
+
+# confidence level to analyze
+alpha <- 0.05
+
+#Number of true effects sampled
+nEffects <- 100
+# take the estimated effects of a random protein
+sampleP_vec <- sample(1:length(prot_names), nEffects, replace = F)
+
+
+which.max(do.call(rbind, res[[1]][, 1])[, "single"])
+do.call(rbind, res[[1]][, 1])[51, "single"]
