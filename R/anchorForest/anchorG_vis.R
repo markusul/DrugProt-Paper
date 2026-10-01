@@ -6,7 +6,7 @@ library(SDModels)
 set.seed(42)
 
 # load and preprocess data
-source("R/utils.R")
+source("R/anchorForest/utils.R")
 dat <- prepAggData()
 
 Y <- dat$Y
