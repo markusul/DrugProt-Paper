@@ -64,6 +64,7 @@ if(laggedTime > 0){
   fit <- lasso.proj(x = drug_design, y = Y_full, return.Z = T, suppress.grouptesting = T)
   #save Z
   Z <- fit$Z
+  print(dim(Z))
   save(Z, file = paste0('Z/', tp, '_mode2.RData'))
   print("mode 2 saved")
 }
@@ -72,6 +73,7 @@ if(laggedTime > 0){
 fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T)
 #save Z
 Z <- fit$Z
+print(dim(Z))
 save(Z, file = paste0('Z/', tp, '.RData'))
 
 
