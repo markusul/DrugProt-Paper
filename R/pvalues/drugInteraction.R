@@ -12,6 +12,13 @@ lapply(expTimes, function(tp){
   print(P)
   print(tp)
   
+  modes <- 1
+  if(laggedTime > 0) modes <- c(1, 2)
+  # mode 2 corresponds to estimating the total causal effect of drug onto protein
+  # mode 1 direct causal effect (potentially confounded for later time points)
+  
+  for(mode in modes){
+  
   # Data for model
   Y <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
   D <- datI[datI$pert_time == tp, pert_names]
@@ -37,14 +44,6 @@ lapply(expTimes, function(tp){
   
   #protein design
   laggedTime <- which(expTimes == tp) - 1
-  
-  modes <- 1
-
-  if(laggedTime > 0) modes <- c(1, 2)
-  # mode 2 corresponds to estimating the total causal effect of drug onto protein
-  # mode 1 direct causal effect (potentially confounded for later time points)
-
-  for(mode in modes){
 
   if(laggedTime > 0 & mode == 1){
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
