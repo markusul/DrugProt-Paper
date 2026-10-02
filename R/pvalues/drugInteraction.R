@@ -12,15 +12,16 @@ lapply(expTimes, function(tp){
   print(P)
   print(tp)
   
+  #protein design
+  laggedTime <- which(expTimes == tp) - 1
+  
   modes <- 1
   if(laggedTime > 0) modes <- c(1, 2)
   # mode 2 corresponds to estimating the total causal effect of drug onto protein
   # mode 1 direct causal effect (potentially confounded for later time points)
   
-  for(mode in modes){
-  
   # Data for model
-  Y <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
+  Y_full <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
   D <- datI[datI$pert_time == tp, pert_names]
   
   ## prepare design matrix with interactions
@@ -40,11 +41,9 @@ lapply(expTimes, function(tp){
   
   # combine intercept and drug design
   drug_design <- cbind(drug_design, drug_intercept)
-  design <- drug_design
   
-  #protein design
-  laggedTime <- which(expTimes == tp) - 1
-
+  for(mode in modes){
+  design <- drug_design
   if(laggedTime > 0 & mode == 1){
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
 
@@ -56,12 +55,11 @@ lapply(expTimes, function(tp){
     # remove samples without lagged protein measurements
     noLagged <- rowSums(is.na(design)) > 0
     design <- design[!noLagged, ]
-    Y <- Y[!noLagged]
+    Y <- Y_full[!noLagged]
   }
   
   #labels
   single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
-  colnames(drug_design)
   
   # load projections
   load(paste0('Z/', tp, '.RData'))
