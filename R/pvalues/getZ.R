@@ -16,7 +16,7 @@ print(P)
 print(tp)
 
 # Data for model
-Y <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
+Y_full <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
 D <- datI[datI$pert_time == tp, pert_names]
 
 ## prepare design matrix with interactions
@@ -40,6 +40,7 @@ design <- drug_design
 
 #protein design
 laggedTime <- which(expTimes == tp) - 1
+Y <- Y_full
 
 if(laggedTime > 0){
   protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
@@ -57,15 +58,22 @@ if(laggedTime > 0){
 
 #labels
 single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
-colnames(drug_design)
+
+if(laggedTime > 0){
+  #hdi fit
+  fit <- lasso.proj(x = drug_design, y = Y_full, return.Z = T, suppress.grouptesting = T)
+  #save Z
+  Z <- fit$Z
+  save(Z, file = paste0('Z/', tp, '_mode2.RData'))
+  print("mode 2 saved")
+}
 
 #hdi fit
 fit <- lasso.proj(x = design, y = Y, return.Z = T, suppress.grouptesting = T)
 #save Z
 Z <- fit$Z
-print(dim(Z))
-
 save(Z, file = paste0('Z/', tp, '.RData'))
+
 
 print("finished!")
 end_time <- Sys.time()

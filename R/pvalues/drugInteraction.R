@@ -43,7 +43,9 @@ lapply(expTimes, function(tp){
   drug_design <- cbind(drug_design, drug_intercept)
   
   for(mode in modes){
+  
   design <- drug_design
+  Y <- Y_full
   if(laggedTime > 0 & mode == 1){
     protein_design <- aggData[[laggedTime]][datI[datI$pert_time == tp, 'label'], ]
 
@@ -55,14 +57,18 @@ lapply(expTimes, function(tp){
     # remove samples without lagged protein measurements
     noLagged <- rowSums(is.na(design)) > 0
     design <- design[!noLagged, ]
-    Y <- Y_full[!noLagged]
+    Y <- Y[!noLagged]
   }
   
   #labels
   single_effects <- rep(c(colnames(D), rep(NA, choose(ncol(D), 2))), 2)
   
   # load projections
-  load(paste0('Z/', tp, '.RData'))
+  if(mode == 2){
+    load(paste0('Z/', tp, '_mode2.RData'))
+  }else{
+    load(paste0('Z/', tp, '.RData'))
+  }
   
   #hdi fit with robustness against model misspecifications
   fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
