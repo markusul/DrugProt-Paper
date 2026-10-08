@@ -605,30 +605,27 @@ library(ggplot2)
 expTimes <- c(6, 24, 48)
 alpha <- 0.05
 
-# long format: one row per protein x time point x metric x effect type
 df <- do.call(rbind, lapply(seq_along(res), function(t){
   m <- res[[t]]
   do.call(rbind, lapply(seq_len(nrow(m)), function(k){
-    do.call(rbind, lapply(c("type1", "power"), function(met){
-      v <- m[[k, met]]
-      if(length(v) == 0) return(NULL)
-      data.frame(tp = expTimes[t], protein = k, metric = met,
-                 group = names(v), value = as.numeric(v))
-    }))
+    d <- m[[k, "coef"]]
+    d$tp <- expTimes[t]
+    d$protein <- k
+    d
   }))
 }))
-df <- df[is.finite(df$value), ]
+df <- df[is.finite(df$rate), ]
 
+df$metric <- factor(ifelse(df$true_effect, "Power", "Type I error"),
+                    levels = c("Type I error", "Power"))
 df$tp <- factor(df$tp, levels = expTimes, labels = paste(expTimes, "h"))
-df$metric <- factor(df$metric, levels = c("type1", "power"),
-                    labels = c("Type I error", "Power"))
 df$group <- factor(df$group, levels = c("single", "double", "protein"),
                    labels = c("Single drug", "Drug pair", "Lagged protein"))
 
 alpha_line <- data.frame(metric = factor("Type I error", levels = levels(df$metric)),
                          y = alpha)
 
-p <- ggplot(df, aes(x = group, y = value, fill = group)) +
+p <- ggplot(df, aes(x = group, y = rate, fill = group)) +
   geom_boxplot(linewidth = 0.6, outlier.size = 0.8) +
   #geom_point() +
   geom_hline(data = alpha_line, aes(yintercept = y),
@@ -645,19 +642,3 @@ p <- ggplot(df, aes(x = group, y = value, fill = group)) +
 p
 ggsave("figures/PvalAnalysis.png", p, width = 8, height = 6)
 
-
-
-load("data/laggedData.RData")
-expTimes <- c(6, 24, 48)
-
-# confidence level to analyze
-alpha <- 0.05
-
-#Number of true effects sampled
-nEffects <- 100
-# take the estimated effects of a random protein
-sampleP_vec <- sample(1:length(prot_names), nEffects, replace = F)
-
-
-which.max(do.call(rbind, res[[1]][, 1])[, "single"])
-do.call(rbind, res[[1]][, 1])[51, "single"]
