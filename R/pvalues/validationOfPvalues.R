@@ -59,7 +59,6 @@ if(laggedTime > 0){
   # remove samples without lagged protein measurements
   noLagged <- rowSums(is.na(design)) > 0
   design <- design[!noLagged, ]
-  datI <- datI[datI$pert_time == tp, ][!noLagged, ]
 }
 
 res <- lapply(sampleP_vec, function(sampleP){
@@ -78,10 +77,10 @@ res <- lapply(sampleP_vec, function(sampleP){
     sampledEffects <- c(sampledEffects, betahat)
   }
   
-  Y_true <- datI[datI$pert_time == tp, prot_names[sampleP]] - datI[datI$pert_time == tp, paste0(prot_names[sampleP], "_0")]
-  
+  # noise level estimated in the main fit (cv lasso residuals, degrees of freedom corrected)
+  stopifnot(!is.null(sigmahat))
   Y_mu <- design %*% sampledEffects
-  sigma <- sd(Y_true - Y_mu)
+  sigma <- sigmahat
   
   nOut <- length(dLabels_measured) + if(laggedTime > 0) length(prot_names) else 0
   res <- parallel::mclapply(1:nRep, mc.cores = 100, function(i){
