@@ -72,12 +72,23 @@ lapply(expTimes, function(tp){
     load(paste0('Z/', tp, '.RData'))
   }
   
-  #hdi fit with robustness against model misspecifications
-  fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
+  # de-sparsified lasso, robust = FALSE assumes homoscedastic errors
+  fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE, suppress.grouptesting = TRUE)
   
-  # apply group testing for each treatments (intercept and effect)
+  # group test for each treatment (intercept and effect), Bonferroni over the coefficients of the group
+  # the simulation based groupTest of hdi resolves p-values only down to 1/N and is not used
   nDrugs <- ncol(D)
-  pval.drugs <- sapply(dLabels_measured, function(l){fit$groupTest(which(dlabels_model == l), conservative = FALSE)})
+  pval.drugs <- sapply(dLabels_measured, function(l){
+    g <- which(dlabels_model == l)
+    min(1, length(g) * min(fit$pval[g]))
+  })
+  
+  # individual p-values and standard errors of the drug coefficients, and the noise estimate
+  pval.drugs.individual <- lapply(dLabels_measured, function(l){fit$pval[which(dlabels_model == l)]})
+  names(pval.drugs.individual) <- dLabels_measured
+  se.drugs <- lapply(dLabels_measured, function(l){fit$se[which(dlabels_model == l)]})
+  names(se.drugs) <- dLabels_measured
+  sigmahat <- fit$sigmahat
 
   # collect estimated effects for drug effects
   effects.drugs <- lapply(dLabels_measured, function(l){fit$betahat[which(dlabels_model == l)]})
@@ -87,11 +98,13 @@ lapply(expTimes, function(tp){
 
   if(mode == 2){
     save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '_mode2.RData'), 
-         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
-  }else{
+         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased,
+         pval.drugs.individual, se.drugs, sigmahat)
+         }else{
     save(file = paste0('results/DrugEffects/', which(prot_names == P) , '_', tp, '.RData'), 
-         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased)
-  }
+         pval.drugs, dLabels_measured, dlabels_model, nDrugs, P, tp, effects.drugs, effects.drugs.debiased,
+         pval.drugs.individual, se.drugs, sigmahat)
+         }
   
   pval <- NULL
   bhat <- NULL
