@@ -89,6 +89,7 @@ if (mean(gene_ok) < 0.999) {
 
 intensity <- t(as.matrix(PTV1[, -(1:2)]))
 colnames(intensity) <- protein_columns
+rm(PTV1); invisible(gc())
 sample_ids <- rownames(intensity)
 
 # Restrict to the samples that entered the analysis and that carry annotation

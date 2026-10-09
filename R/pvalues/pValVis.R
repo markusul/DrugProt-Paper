@@ -73,6 +73,7 @@ P_Results <- c(P_Results, paste0("Number of parameters in equation 2 and 3: ",
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
 P_selection <- which(prot_names_short %in% path_s)
+stopifnot(all(unique(path_s) %in% prot_names_short))
 nSelection <- length(P_selection)
 P_Results <- c(P_Results, paste0("Number of selected proteins by AnchorForest: ", nSelection))
 
@@ -458,6 +459,7 @@ close(fileConn)
 
 ##### Visualize protein network only with the top three proteins #####
 P_selection <- which(prot_names_short %in% most_imp)
+stopifnot(all(unique(most_imp) %in% prot_names_short))
 
 # select relevant p-values
 Pval_sel <- lapply(Pval_all, function(links){

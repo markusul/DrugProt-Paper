@@ -9,6 +9,8 @@ module load stack/2024-06  gcc/12.2.0
 module load r/4.4.0
 
 export OMP_NUM_THREADS=1
+# stop at the first failing script
+set -e
 
 Rscript --vanilla R/preprocessing/data_preprocessing.R
 Rscript --vanilla R/preprocessing/data_preparation.R

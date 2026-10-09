@@ -16,8 +16,7 @@ allPvecs <- lapply(1:nProt, function(P){
       #pval.drugs <- p.adjust(pval.drugs, method = 'holm')
       return(pval.drugs)
     }else{
-      print(paste0(P, '_', t, " not found!"))
-      return(rep(1, nTreatment))
+      stop(paste0("results/DrugEffects/", P, "_", t, ".RData not found"))
     }
   })
   pvec
@@ -46,10 +45,7 @@ Pval_all <- lapply(c(24, 48), function(t){
                           'target' = Prot, 
                           'pvalue' = pval)
     }else{
-      links <- data.frame('source' = 1:nProt, 
-                          'target' = Prot, 
-                          'pvalue' = 2)
-      print("missing experiment!")
+      stop(paste0(path, " not found"))
     }
     links
   })
