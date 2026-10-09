@@ -64,16 +64,26 @@ dfPerf_g <- gather(dfPerf, 'environment', 'mse', -gamma)
 dfPerf_g$environment <- as.factor(dfPerf_g$environment)
 levels(dfPerf_g$environment) <- 1:8
 
+# most difficult environment, the one with the largest mean OOD MSE over gamma
+worst_env <- rownames(mse)[which.max(rowMeans(mse))]
+print(worst_env)
+A_Results <- c(A_Results, paste0("Most difficult environment: ", worst_env))
+
 # smooth worst case environment curve
-fit <- stats::loess(`#20` ~ gamma, dfPerf)
+fit <- stats::loess(as.formula(paste0("`", worst_env, "` ~ gamma")), dfPerf)
 fitted <- predict(fit, newdata = data.frame(gamma = xseq))
 # optimal gamma for most difficult environment
-xseq[which.min(fitted)]
+gamma_opt <- xseq[which.min(fitted)]
+gamma_opt
 A_Results <- c(A_Results, paste0("Optimal gamma for most difficult environment: ", 
-                                  round(xseq[which.min(fitted)], 6)))
+                                  round(gamma_opt, 6)))
+
+# anchorG_opt.R reads gamma_opt from here
+dir.create("results/anchor_opt", showWarnings = FALSE, recursive = TRUE)
+save(gamma_opt, worst_env, file = "results/anchor_opt/gamma_opt.RData")
 
 # relative improvement over random forest (gamma = 1)
-perfRF <- dfPerf[dfPerf$gamma == 1, "#20"]
+perfRF <- dfPerf[dfPerf$gamma == 1, worst_env]
 perfARF <- min(fitted)
 (perfRF - perfARF) / perfRF
 A_Results <- c(A_Results, paste0("Relative improvement over random forest (gamma = 1): ", 
@@ -99,6 +109,11 @@ mean_perf
 A_Results <- c(A_Results, paste0("Performance of mean prediction per environment: ", 
                                   paste(round(mean_perf, 4), collapse = ", ")))
 
+# first pass after anchorG_CV.R ends here, second pass after anchorG_opt_res.R continues
+if(!file.exists("results/anchor_opt/var_importance.RData")){
+  message("gamma_opt saved, run anchorG_opt.R and anchorG_opt_res.R, then this script again")
+  quit(save = "no")
+}
 # analyze variable importance and selected proteins of anchor forest with optimal gamma
 load("results/anchor_opt/var_importance.RData")
 plot(var_importance)

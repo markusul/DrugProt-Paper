@@ -19,9 +19,10 @@ pertLabel <- dat$pertLabel
 X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
 
-# optimal gamma from cross-validation
-#gamma <- 7.965597
-gamma <- 9.287329
+# optimal gamma from cross-validation, written by the first pass of anchorG_vis.R
+load("results/anchor_opt/gamma_opt.RData")
+gamma <- gamma_opt
+print(gamma)
 
 # fit Anchor Forest
 options(future.globals.maxSize = 2.0 * 1e9) # increase max global size for parallel processing
