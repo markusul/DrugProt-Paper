@@ -20,7 +20,8 @@ X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
 
 # optimal gamma from cross-validation
-gamma <- 7.965597
+#gamma <- 7.965597
+gamma <- 9.287329
 
 # fit Anchor Forest
 options(future.globals.maxSize = 2.0 * 1e9) # increase max global size for parallel processing

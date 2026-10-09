@@ -8,6 +8,12 @@
 /pvals
 /figures
 
+/results_backup
+/results_cv
+cvCheck.R
+cvCompare.R
+cvCheck.slurm
+
 # History files
 .Rhistory
 .Rapp.history
