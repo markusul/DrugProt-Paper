@@ -87,10 +87,12 @@ res <- lapply(sampleP_vec, function(sampleP){
   res <- parallel::mclapply(1:nRep, mc.cores = 100, function(i){
     tryCatch({
       Y <- Y_mu + rnorm(length(Y_mu), 0, sigma)
-      fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE)
+      fit <- lasso.proj(x = design, y = Y, Z = Z, robust = FALSE, suppress.grouptesting = TRUE)
       
+      # same group test as in drugInteraction.R
       pval.drugs <- sapply(dLabels_measured, function(l){
-        fit$groupTest(which(dlabels_model == l), conservative = FALSE)
+        g <- which(dlabels_model == l)
+        min(1, length(g) * min(fit$pval[g]))
       })
       estim_effects <- pval.drugs < alpha
       
