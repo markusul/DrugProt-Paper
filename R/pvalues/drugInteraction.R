@@ -8,6 +8,8 @@ load("data/laggedData.RData")
 expTimes <- c(6, 24, 48)
 
 res <- parallel::mclapply(prot_names, mc.cores = 100, function(P){
+# seed per protein, so results do not depend on scheduling or mc.cores
+set.seed(22 + which(prot_names == P))
 lapply(expTimes, function(tp){
   print(P)
   print(tp)
