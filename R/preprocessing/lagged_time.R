@@ -45,7 +45,8 @@ dat <- cbind(dat, dat0)
 # remove M453(ATCC) (no baseline protein expression)
 dat <- dat[dat$protein_plate != "M453(ATCC)", ]
 
-# add nois to imputation for computational und statistical stability
+# impute values below the detection border by the conditional mean of a normal fitted to the observed values, truncated at the border
+# deterministic, so the results do not depend on a random draw
 add_noise_to_imputation <- function(x){
   if(length(unique(x)) < 3) return(x)
   
@@ -53,7 +54,7 @@ add_noise_to_imputation <- function(x){
   imp <- which(x < border)
   x_ <- x[-imp]
   y <- x
-  y[imp] <- truncnorm::rtruncnorm(length(imp), a = -Inf, b = border, mean = mean(x_), sd = sd(x_))
+  y[imp] <- truncnorm::etruncnorm(a = -Inf, b = border, mean = mean(x_), sd = sd(x_))
   y
 }
 
