@@ -53,7 +53,10 @@ names(treatNames) <- treatDNames
 save(treatNames, file = "results/Coef/drugs/treatNames.RData")
 
 
+for(effect_type in c("direct", "total")){
+# 6 h has no lagged proteins, so direct and total effect coincide there
 res <- lapply(expTimes, function(tp){
+suffix <- if(effect_type == "total" && tp != expTimes[1]) "_mode2" else ""
   
 D <- datI[datI$pert_time == tp, pert_names]
 
@@ -77,7 +80,7 @@ drug_design <- cbind(drug_design, drug_intercept)
 
 
 res <- sapply(1:length(prot_names), function(protein){
-  load(file = paste0('results/DrugEffects/', protein , '_', tp, '.RData'))
+  load(file = paste0('results/DrugEffects/', protein , '_', tp, suffix, '.RData'))
   sapply(effects.drugs.debiased, function(dEffect){
     total_effects <- drug_design[, names(dEffect)] %*% dEffect
     meanCoef <- mean(total_effects[total_effects != 0])
@@ -89,14 +92,15 @@ res
 
 
 res2 <- array(unlist(res), dim = c(nTreatment, length(prot_names), length(expTimes)))
-
+out_dir <- if(effect_type == "direct") "results/Coef/drugs/" else "results/Coef/drugs_total/"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 for(drug in 1:nTreatment){
   dEff <- res2[drug, , ]
-  save(dEff, file = paste0('results/Coef/drugs/', drug, '.RData'))
+  save(dEff, file = paste0(out_dir, drug, '.RData'))
+}
 }
 
-
-
+# effects of proteins
 for(tp in expTimes[-1]){
   for(protein in 1:length(prot_names)){
     load(file = paste0('results/ProteinEffects/', protein , '_', tp, '.RData'))

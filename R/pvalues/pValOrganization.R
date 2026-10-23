@@ -61,3 +61,24 @@ pvalue <- do.call(cbind, pvalue)
 
 save(pvalue, file = "results/proteinNetworkPval_pvalue.RData")
 
+##### Drug Effects mode 2####
+# total causal effects of drugs onto the proteins
+# collect all p values for drug effects on all proteins at all time points
+# total effects, 6 h has no lagged proteins so direct and total effect coincide
+allPvecsTotal <- lapply(1:nProt, function(P){
+  sapply(c(6, 24, 48), function(t){
+    suffix <- if(t == 6) "" else "_mode2"
+    path <- paste0('results/DrugEffects/', P, '_', t, suffix, '.RData')
+    if(!file.exists(path)) stop(paste0(path, " not found"))
+    load(file = path)
+    pval.drugs
+  })
+})
+stopifnot(identical(rownames(allPvecsTotal[[1]]), treatment))
+allPvecsTotal <- array(unlist(allPvecsTotal), dim = c(nTreatment, nTimes, nProt))
+save(allPvecsTotal, treatment, file = "results/DrugEffects_total.RData")
+
+# number of significant drug effects on different times
+apply(array(p.adjust(unlist(allPvecs), method = "holm") < 0.05, 
+            dim = c(nTreatment, nTimes, nProt)), 
+      2, sum)

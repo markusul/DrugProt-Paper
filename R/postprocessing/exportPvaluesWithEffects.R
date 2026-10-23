@@ -4,6 +4,8 @@
 ## the Shiny app shows:
 ##   * drug effects  -> dEff  (average treatment effect)  from
 ##                      results/Coef/drugs/{drug}.RData      [protein x time]
+##                      (direct effects) and
+##                      results/Coef/drugs_total/{drug}.RData (total effects)
 ##   * protein edges -> bhat  (de-sparsified coefficient)   from
 ##                      results/Coef/proteins/{protein}_{hours}.RData
 ##
@@ -16,8 +18,9 @@
 ## coefficients are filled with 0, matching app.R (out[is.na(out)] <- 0).
 ##
 ## Outputs (out_dir, default data/downloads/):
-##   drug_pvalues_effects.csv.gz     (protein, drug, time_h, pvalue, effect)
-##   protein_network_effects.csv.gz  (source, target, time_transition, pvalue, effect)
+##   drug_pvalues_effects.csv.gz     (protein, drug, time_h, effect_type, pvalue, effect, eta)
+##   protein_network_effects.csv.gz  (source, target, time_transition, pvalue, effect, eta_source)
+##   eta is the bias factor of the predictor from R/pvalues/computeEta.R (Zhang and Zhang, 2014)
 ##
 ## Usage:
 ##   Rscript R/exportPvaluesWithEffects.R [parquet_dir] [out_dir] [results_dir]
@@ -64,36 +67,48 @@ hours_of   <- setNames(exp_times$hours, exp_times$idx)          # time_idx -> ho
 ## ===========================================================================
 message("Drug effects: reading p-values ...")
 drug_pv <- dbGetQuery(con, sprintf(
-  "SELECT protein, treatment, time_idx, pvalue FROM %s", pq("drug_pvalue")))
+  "SELECT effect_type, protein, treatment, time_idx, pvalue FROM %s", pq("drug_pvalue")))
 
-## Build a (treatment, protein, time_idx) -> dEff lookup by loading each drug file.
+## Build a (effect_type, treatment, protein, time_idx) -> dEff lookup by loading each drug file.
 message("Drug effects: attaching dEff magnitudes ...")
 drug_pv$effect <- 0                                  # default fill (matches app)
 nTimes <- nrow(exp_times)
-for (tr in sort(unique(drug_pv$treatment))) {
-  f <- file.path(results_dir, "Coef/drugs", paste0(tr, ".RData"))
-  if (!file.exists(f)) { message("  missing drug coef: ", f); next }
-  dEff <- load_one(f, "dEff")                        # [nProt x nTimes]
-  dEff <- matrix(dEff, nrow = nProt)
-  stopifnot(nrow(dEff) == nProt, ncol(dEff) == nTimes)
-  rows <- which(drug_pv$treatment == tr)
-  ## index dEff by this drug's (protein, time_idx) rows; NA -> 0
-  vals <- dEff[cbind(drug_pv$protein[rows], drug_pv$time_idx[rows])]
-  vals[is.na(vals)] <- 0
-  drug_pv$effect[rows] <- vals
+coef_dirs <- c(direct = "Coef/drugs", total = "Coef/drugs_total")
+stopifnot(all(unique(drug_pv$effect_type) %in% names(coef_dirs)))
+for (et in names(coef_dirs)) {
+  for (tr in sort(unique(drug_pv$treatment))) {
+    f <- file.path(results_dir, coef_dirs[[et]], paste0(tr, ".RData"))
+    if (!file.exists(f)) stop("missing drug coef: ", f)
+    dEff <- load_one(f, "dEff")                      # [nProt x nTimes]
+    dEff <- matrix(dEff, nrow = nProt)
+    stopifnot(nrow(dEff) == nProt, ncol(dEff) == nTimes)
+    rows <- which(drug_pv$effect_type == et & drug_pv$treatment == tr)
+    ## index dEff by this drug's (protein, time_idx) rows; NA -> 0
+    vals <- dEff[cbind(drug_pv$protein[rows], drug_pv$time_idx[rows])]
+    vals[is.na(vals)] <- 0
+    drug_pv$effect[rows] <- vals
+  }
 }
+
+## bias factor of the drug group, shared by all response proteins at a time point
+eta_env <- new.env(); load(file.path(results_dir, "eta.RData"), envir = eta_env)
+eta_key <- with(eta_env$eta_drug, paste(effect_type, treatment, time_idx))
+drug_pv$eta <- eta_env$eta_drug$eta[match(paste(drug_pv$effect_type, drug_pv$treatment, drug_pv$time_idx), eta_key)]
+stopifnot(!anyNA(drug_pv$eta))
 
 ## Relabel to human-readable and write.
 drug_out <- file.path(out_dir, "drug_pvalues_effects.csv.gz")
 drug_df  <- data.frame(
-  protein = prot_name[as.character(drug_pv$protein)],
-  drug    = drug_name[as.character(drug_pv$treatment)],
-  time_h  = hours_of[as.character(drug_pv$time_idx)],
-  pvalue  = drug_pv$pvalue,
-  effect  = drug_pv$effect,
+  protein     = prot_name[as.character(drug_pv$protein)],
+  drug        = drug_name[as.character(drug_pv$treatment)],
+  time_h      = hours_of[as.character(drug_pv$time_idx)],
+  effect_type = drug_pv$effect_type,
+  pvalue      = drug_pv$pvalue,
+  effect      = drug_pv$effect,
+  eta         = round(drug_pv$eta, 3),
   stringsAsFactors = FALSE
 )
-drug_df <- drug_df[order(drug_df$protein, drug_df$drug, drug_df$time_h), ]
+drug_df <- drug_df[order(drug_df$protein, drug_df$drug, drug_df$effect_type, drug_df$time_h), ]
 gz <- gzfile(drug_out, "w")
 write.csv(drug_df, gz, row.names = FALSE)
 close(gz)
@@ -114,13 +129,18 @@ net_out <- file.path(out_dir, "protein_network_effects.csv.gz")
 gz <- gzfile(net_out, "w")
 write.csv(data.frame(source = character(), target = character(),
                      time_transition = character(), pvalue = double(),
-                     effect = double()),
+                     effect = double(), eta_source = double()),
           gz, row.names = FALSE)            # header only
 
 ## network time_idx -> the later hours value (transition t -> t+1)
 ## expTimes are 6,24,48; transitions are 6->24 (idx 1) and 24->48 (idx 2).
 trans_label <- c("1" = "6h->24h", "2" = "24h->48h")
 trans_hours <- c("1" = 24, "2" = 48)        # hours used in the bhat filename
+
+## bias factor of the source protein as predictor, [nProt x 2 transitions]
+eta_src <- matrix(NA_real_, nProt, 2)
+eta_src[cbind(eta_env$eta_protein$source, eta_env$eta_protein$time_idx)] <- eta_env$eta_protein$eta
+stopifnot(!anyNA(eta_src))
 
 chunk <- 300L
 target_chunks <- split(seq_len(nProt), ceiling(seq_len(nProt) / chunk))
@@ -154,6 +174,7 @@ for (ch in target_chunks) {
     time_transition = trans_label[as.character(net$time_idx)],
     pvalue          = net$pvalue,
     effect          = net$effect,
+    eta_source      = round(eta_src[cbind(net$source, net$time_idx)], 3),
     stringsAsFactors = FALSE
   )
   out <- out[order(out$source, out$target, out$time_transition), ]

@@ -8,7 +8,10 @@
 ## Design notes
 ##  * Long/tidy tables, not wide arrays, so we can index on protein and pull
 ##    only the rows a query touches.
-##  * The drug-effect array becomes a table indexed on `protein`.
+##  * The drug-effect array becomes a table indexed on `protein`. Drug p-values
+##    and coefficients carry `effect_type` ('direct' or 'total'). Direct effects
+##    condition on the lagged proteome, total effects use the drug design alone.
+##    At 6 h both coincide and the total-effect files repeat the direct values.
 ##  * The protein-network matrix becomes a table indexed on (source,target);
 ##    sentinel p-values (== 2, "no experiment") are dropped, not stored.
 ##  * Coefficients (drug `dEff`, protein `bhat`) move from thousands of tiny
@@ -122,15 +125,13 @@ dbWriteTable(con, "meta",
 ## ===========================================================================
 message("== Drug-effect p-values ==")
 
-allPvecs <- load_one(file.path(results_dir, "DrugEffects.RData"), "allPvecs")
-stopifnot(identical(dim(allPvecs), c(nTreatment, nTimes, nProtein)))
-
 dbExecute(con, "
   CREATE TABLE drug_pvalue (
-    protein   INTEGER NOT NULL,
-    treatment INTEGER NOT NULL,
-    time_idx  INTEGER NOT NULL,
-    pvalue    REAL    NOT NULL
+    effect_type TEXT    NOT NULL,   -- 'direct' or 'total'
+    protein     INTEGER NOT NULL,
+    treatment   INTEGER NOT NULL,
+    time_idx    INTEGER NOT NULL,
+    pvalue      REAL    NOT NULL
   );")
 
 ## Insert in protein-chunks. For each chunk we melt the [nTreatment x nTimes x
@@ -144,23 +145,35 @@ prot_chunks <- split(seq_len(nProtein),
 tr_grid <- rep(seq_len(nTreatment), times = nTimes)
 t_grid  <- rep(seq_len(nTimes),     each  = nTreatment)
 
-for (ch in prot_chunks) {
-  n_per_prot    <- nTreatment * nTimes
-  protein_col   <- rep(ch, each = n_per_prot)
-  treatment_col <- rep(tr_grid, times = length(ch))
-  time_col      <- rep(t_grid,  times = length(ch))
-  pvalue_col    <- as.numeric(allPvecs[, , ch])   # column-major: matches grids
+## one p-value array per effect type, written by pValOrganization.R
+drug_pval_files <- c(direct = "DrugEffects.RData", total = "DrugEffects_total.RData")
+drug_pval_objs  <- c(direct = "allPvecs",          total = "allPvecsTotal")
 
-  dbBegin(con)
-  dp_insert(con, "drug_pvalue", list(
-    protein   = protein_col,
-    treatment = treatment_col,
-    time_idx  = time_col,
-    pvalue    = pvalue_col))
-  dbCommit(con)
-  message(sprintf("  drug_pvalue: proteins %d-%d", min(ch), max(ch)))
+for (et in names(drug_pval_files)) {
+  f   <- file.path(results_dir, drug_pval_files[[et]])
+  arr <- load_one(f, drug_pval_objs[[et]])
+  stopifnot(identical(dim(arr), c(nTreatment, nTimes, nProtein)),
+            identical(load_one(f, "treatment"), treatment_raw))
+
+  for (ch in prot_chunks) {
+    n_per_prot    <- nTreatment * nTimes
+    protein_col   <- rep(ch, each = n_per_prot)
+    treatment_col <- rep(tr_grid, times = length(ch))
+    time_col      <- rep(t_grid,  times = length(ch))
+    pvalue_col    <- as.numeric(arr[, , ch])   # column-major: matches grids
+
+    dbBegin(con)
+    dp_insert(con, "drug_pvalue", list(
+      effect_type = rep(et, length(pvalue_col)),
+      protein     = protein_col,
+      treatment   = treatment_col,
+      time_idx    = time_col,
+      pvalue      = pvalue_col))
+    dbCommit(con)
+    message(sprintf("  drug_pvalue (%s): proteins %d-%d", et, min(ch), max(ch)))
+  }
+  rm(arr); gc()
 }
-rm(allPvecs); gc()
 
 ## ===========================================================================
 ## 3. PROTEIN NETWORK P-VALUES
@@ -229,30 +242,38 @@ message("== Drug coefficients ==")
 
 dbExecute(con, "
   CREATE TABLE drug_coef (
-    treatment INTEGER NOT NULL,
-    protein   INTEGER NOT NULL,
-    time_idx  INTEGER NOT NULL,
-    coef      REAL    NOT NULL
+    effect_type TEXT    NOT NULL,   -- 'direct' or 'total'
+    treatment   INTEGER NOT NULL,
+    protein     INTEGER NOT NULL,
+    time_idx    INTEGER NOT NULL,
+    coef        REAL    NOT NULL
   );")
 
 pg <- rep(seq_len(nProtein), times = nTimes)
 tg <- rep(seq_len(nTimes),   each  = nProtein)
 
-dbBegin(con)
-for (drug in seq_len(nTreatment)) {
-  f <- file.path(results_dir, "Coef/drugs", paste0(drug, ".RData"))
-  if (!file.exists(f)) { message("  missing drug coef ", f); next }
-  dEff <- load_one(f, "dEff")              # nProtein x nTimes
-  dEff <- matrix(dEff, nrow = nProtein)
-  vals <- as.numeric(dEff)
-  keep <- which(!is.na(vals))              # store only present coefficients
-  dp_insert(con, "drug_coef", list(
-    treatment = rep(drug, length(keep)),
-    protein   = pg[keep],
-    time_idx  = tg[keep],
-    coef      = vals[keep]))
+## one directory per effect type, written by effecsOrganization.R
+drug_coef_dirs <- c(direct = "Coef/drugs", total = "Coef/drugs_total")
+
+for (et in names(drug_coef_dirs)) {
+  dbBegin(con)
+  for (drug in seq_len(nTreatment)) {
+    f <- file.path(results_dir, drug_coef_dirs[[et]], paste0(drug, ".RData"))
+    if (!file.exists(f)) stop("missing drug coef ", f)
+    dEff <- load_one(f, "dEff")              # nProtein x nTimes
+    dEff <- matrix(dEff, nrow = nProtein)
+    vals <- as.numeric(dEff)
+    keep <- which(!is.na(vals))              # store only present coefficients
+    dp_insert(con, "drug_coef", list(
+      effect_type = rep(et, length(keep)),
+      treatment   = rep(drug, length(keep)),
+      protein     = pg[keep],
+      time_idx    = tg[keep],
+      coef        = vals[keep]))
+  }
+  dbCommit(con)
+  message(sprintf("  drug_coef (%s) done", et))
 }
-dbCommit(con)
 
 ## ===========================================================================
 ## 5. PROTEIN COEFFICIENTS (results/Coef/proteins/{protein}_{hours}.RData : bhat)
@@ -294,10 +315,10 @@ for (ti in 2:nTimes) {
 ## ===========================================================================
 message("== Indexes ==")
 
-dbExecute(con, "CREATE INDEX idx_drug_pval_protein  ON drug_pvalue(protein);")
+dbExecute(con, "CREATE INDEX idx_drug_pval_protein  ON drug_pvalue(effect_type, protein);")
 dbExecute(con, "CREATE INDEX idx_net_source         ON protein_pvalue(source, time_idx);")
 dbExecute(con, "CREATE INDEX idx_net_target         ON protein_pvalue(target, time_idx);")
-dbExecute(con, "CREATE INDEX idx_drug_coef_treat    ON drug_coef(treatment);")
+dbExecute(con, "CREATE INDEX idx_drug_coef_treat    ON drug_coef(effect_type, treatment);")
 dbExecute(con, "CREATE INDEX idx_prot_coef_target   ON protein_coef(target, time_idx);")
 dbExecute(con, "CREATE INDEX idx_proteins_name      ON proteins(name);")
 

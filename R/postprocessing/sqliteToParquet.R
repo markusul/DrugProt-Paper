@@ -5,7 +5,8 @@
 ## 5.4 GB .sqlite. One Parquet file per table (DuckDB queries them together).
 ##
 ## Memory note: every table is read fully into R before writing. drug_pvalue
-## (~2M rows) and protein_pvalue (~58M rows on the real data) are the large
+## (~3.9M rows with direct and total effects) and protein_pvalue (~58M rows on
+## the real data) are the large
 ## ones; ~58M rows x 4 cols of doubles is ~1.8 GB in R briefly. If that is too
 ## much, see the chunked alternative for protein_pvalue at the bottom.
 ## --------------------------------------------------------------------------
@@ -22,8 +23,18 @@ con <- dbConnect(RSQLite::SQLite(), db_path)
 tables <- dbListTables(con)
 cat("Tables:", paste(tables, collapse = ", "), "\n\n")
 
+## Sort the drug tables by effect type first, so a query for one effect type and
+## a few proteins (or one treatment) touches only a few row groups.
+order_by <- c(drug_pvalue = "effect_type, protein, treatment, time_idx",
+              drug_coef   = "effect_type, treatment, protein, time_idx")
+
 for (tbl in tables) {
-  df  <- dbGetQuery(con, sprintf("SELECT * FROM %s", tbl))
+  sql <- if (tbl %in% names(order_by)) {
+    sprintf("SELECT * FROM %s ORDER BY %s", tbl, order_by[[tbl]])
+  } else {
+    sprintf("SELECT * FROM %s", tbl)
+  }
+  df  <- dbGetQuery(con, sql)
   out <- file.path(out_dir, paste0(tbl, ".parquet"))
   write_parquet(df, out, compression = "gzip")
   cat(sprintf("  %-16s %10d rows -> %s (%.1f MB)\n",

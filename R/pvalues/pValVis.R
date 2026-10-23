@@ -534,7 +534,7 @@ Nodes_sum[connectingNodes, "name"] <- ""
 
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize =25, bounded = T,
+                   fontSize =20, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
@@ -561,7 +561,7 @@ fN
 saveWidget(fN, "figures/summary_sel2.html")
 webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 3, 
         vwidth = 600,
-        vheight = 600, delay = 3)
+        vheight = 600, delay = 1)
 
 connectingNodes <- table(c(Links_temp$source, Links_temp$target)) < 2
 
@@ -569,11 +569,11 @@ Nodes_temp$size <- 30
 Nodes_temp[connectingNodes, "name"] <- ""
 fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 25, bounded = T,
+                   fontSize = 15, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=F, charge = -100,
+                   arrows = T, zoom = T, legend=F, charge = -90,
                    opacityNoHover = TRUE,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"), 
                    linkWidth = JS("function(d) { return Math.sqrt(d.value) * 2; }"), 
@@ -628,7 +628,8 @@ alpha_line <- data.frame(metric = factor("Type I error", levels = levels(df$metr
                          y = alpha)
 
 p <- ggplot(df, aes(x = group, y = rate, fill = group)) +
-  geom_boxplot(linewidth = 0.6, outlier.size = 0.8) +
+  geom_boxplot(linewidth = 0.1, outlier.size = 0.02) +
+  #geom_violin(linewidth = 0.6) + 
   #geom_point() +
   geom_hline(data = alpha_line, aes(yintercept = y),
              linetype = "dashed", linewidth = 0.8, colour = "grey30") +
@@ -643,4 +644,4 @@ p <- ggplot(df, aes(x = group, y = rate, fill = group)) +
 
 p
 ggsave("figures/PvalAnalysis.png", p, width = 8, height = 6)
-
+``
