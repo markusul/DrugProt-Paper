@@ -97,7 +97,8 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) +
   geom_point(aes(col = environment, shape = environment), size = 0.6) + 
   scale_shape_manual(values=0:7) +
   geom_vline(xintercept = 1) +
-  ylab("OOD MSE") + xlab(expression(gamma))
+  ylab("OOD MSE") + xlab(expression(gamma)) + 
+  ylim(7.4, 14)
 
 ggAnchor
 ggsave("figures/AnchorCV.jpeg", width = 6, height = 3)
@@ -136,6 +137,9 @@ load("results/anchor_opt/regPath.RData")
 gg_path <- plot(path, sqrt_scale = T)
 gg_path
 
+plot(path, plotly = TRUE, imp_s)
+
+
 plotOOB(path)
 
 ggsave("figures/regPath.jpeg", 
@@ -160,6 +164,8 @@ all(stab_s == path_s)
 
 # overlap with important proteins
 sum(stab_s %in% imp_s)
+
+sort(var_importance[path_s])
 
 ##check timepoints of regularized selection
 #number of important proteins
@@ -195,8 +201,8 @@ A_Results <- c(A_Results, paste0("Number of unique selected proteins (regulariza
 A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0.5): ", 
                                   paste(unique(path_s), collapse = ", ")))
 
-# 2 most important proteins
-most_imp <- sort(var_importance, decreasing = T)[1:2]
+# 3 most important proteins
+most_imp <- sort(var_importance, decreasing = T)[1:3]
 # timepoints of most important proteins
 times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
@@ -220,26 +226,19 @@ save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelectio
 
 # partial dependence plots for the 2 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-#gg3 <- plot(dep3) + xlab(most_imp_h[3]) + theme_bw() + ylim(5, 8) + xlim(-1, 1) + 
-#  ggtitle("") + ylab("")
+gg3 <- plot(dep3, n_examples = 0) + xlab(most_imp_h[3]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
+  ggtitle("") + ylab("")
 
 lab1 <- paste('differential log-protein expression', most_imp_h[2])
 
-gg2 <- plot(dep2, n_examples = 0) + xlab(most_imp_h[2]) + theme_bw() + ylim(6.25, 7) + xlim(-0.5, 0.5) + 
+gg2 <- plot(dep2, n_examples = 0) + xlab(most_imp_h[2]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
   ggtitle("") + ylab("")
-gg1 <- plot(dep1, n_examples = 0) + xlab(most_imp_h[1]) + theme_bw() + ylim(6.25, 7) + xlim(-0.5, 0.5) + 
+gg1 <- plot(dep1, n_examples = 0) + xlab(most_imp_h[1]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
   ggtitle("") +
   ylab(expression(widehat(IC50)))
 
-ggdep <- grid.arrange(gg1, gg2, nrow =1, bottom = "Partial dependence on differential log-protein expression")
-ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
-
-# comparison to plain model
-load("results/plainFit_full.RData")
-imp_plain_full <- sort(fit_plain_full$var_importance, decreasing = T)
-imp_plain_full[1:10]
-
-plot(var_importance, fit_plain_full$var_importance)
+ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1, bottom = "Partial dependence on differential log-protein expression")
+ggsave("figures/AnchorDep.jpeg", ggdep, width = 10.5, height = 3)
 
 # file to save results to
 fileConn <- file("results/A_Results.txt")
