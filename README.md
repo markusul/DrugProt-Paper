@@ -15,7 +15,7 @@ The analysis runs from publicly available data. Two sources are needed.
 02_protein_intensity_matrix.xlsx
 ```
 
-**Analysis inputs**, from the [Drug-Prot data deposit](https://doi.org/10.5281/zenodo.21508013), recording the sample selection, the protein identifiers and the viability values used here
+**Analysis inputs**, from the [Drug-Prot data deposit](https://doi.org/10.5281/zenodo.21508012), recording the sample selection, the protein identifiers and the viability values used here
 
 ```
 analysis_samples.csv
@@ -45,6 +45,7 @@ Place all five files in `data/`. The expected layout is
 └── 📂 results
     ├── 📂 Coef
     │   ├── 📂 drugs
+    │   ├── 📂 drugs_total
     │   └── 📂 proteins
     ├── 📂 DrugEffects
     ├── 📂 ProteinEffects
@@ -55,36 +56,43 @@ Place all five files in `data/`. The expected layout is
 Create the empty directories before submitting any job, since the scripts write into them without creating them.
 
 ```bash
-mkdir -p Z figures outfiles results/{DrugEffects,ProteinEffects,anchorG,anchor_opt} results/Coef/{drugs,proteins}
+mkdir -p Z figures outfiles results/{DrugEffects,ProteinEffects,anchorG,anchor_opt} results/Coef/{drugs,drugs_total,proteins}
 ```
 
 ### 1. Analysis Pipeline
-Run the following scripts in order to reproduce the model fits:
+Run the following jobs in order to reproduce the model fits:
 
 1.  `prepare.slurm`: **Preprocessing** of the data.
-2.  `getZ.sh`: Calculates projections needed for the **de-sparsified Lasso regressions**.
-3.  `fit.slurm`: Fits the models.
-4.  `anchorG_CV.sh`: Performs out-of-distribution cross-validation for the **Anchor Forests**.
-5.  `anchorG_opt.slurm`: Refits the Anchor Forests with the optimal gamma.
-    > *Note: Determine the optimal gamma from `R/anchorForest/anchorG_vis.R` (Line 71) before running.*
-6.  `anchorG_opt_res.slurm`: Calculates regularization paths and partial dependencies.
+2.  `getZ.sh`: Calculates the projections for the **de-sparsified Lasso regressions**, for the direct-effect models (`Z/{6,24,48}.RData`) and the total-effect models (`Z/{24,48}_mode2.RData`).
+3.  `fit.slurm`: Fits the models. At 24 and 48 hours each protein is fitted twice, conditional on the lagged proteome (direct drug effects and protein dependencies) and on the drugs alone (total drug effects, files ending in `_mode2`).
+4.  `pValAnalysis.slurm`: Simulation study validating the **type I error and power** of the p-values. It reuses the coefficients and noise levels of the fit, so it runs after `fit.slurm`.
 
-`pValAnalysis.slurm` runs the simulation study validating the calibration of the high-dimensional p-values. It depends only on the preprocessing and on `getZ.sh`, so it can run alongside the rest.
+The **Anchor Forest** analysis depends only on the preprocessing and can run alongside steps 2 to 4:
+
+1.  `anchorG_CV.sh`: Out-of-distribution cross-validation over $\gamma$, one job per held-out environment.
+2.  `anchorG_vis.R`, first pass: Determines the most difficult environment and the optimal $\gamma$, saves both to `results/anchor_opt/gamma_opt.RData`, and stops.
+3.  `anchorG_opt.slurm`: Refits the Anchor Forest on all data with the optimal $\gamma$.
+4.  `anchorG_opt_res.slurm`: Calculates regularization paths, stability selection, and partial dependencies.
+5.  `anchorG_vis.R`, second pass: **Visualizes** the results, saves findings to `results/A_Results.txt`, and writes the protein selection to `results/anchor_opt/proteinSelection.RData`.
+
+> *Note: `anchorG_vis.R` decides which pass to run by checking for `results/anchor_opt/var_importance.RData`. Start from an empty `results/anchor_opt/` so that a file from an earlier run does not skip the first pass.*
+
+All random steps are seeded. The imputation of missing values is deterministic, and each protein in `fit.slurm` uses its own seed, so the results do not depend on scheduling or the number of cores.
 
 ### 2. Visualization & Output
-Once the pipeline is complete, run these R scripts to generate figures:
+Once both parts of the pipeline are complete, run these R scripts to generate figures:
 
-1.  `anchorG_vis.R`: **Visualizes** the results from Anchor Forests and saves findings to `results/A_Results.txt`.
-2.  `pValOrganization.R`: **Organizes** the p-values from `DrugProt` for visualization.
-3.  `pValVis.R`: **Visualizes** the p-values from `DrugProt` and saves findings to `results/P_Results.txt`.
+1.  `pValOrganization.R`: **Organizes** the p-values for visualization, for direct and total drug effects.
+2.  `pValVis.R`: **Visualizes** the p-values for the protein selection of the Anchor Forest and the validation study, and saves findings to `results/P_Results.txt`.
 
 ### 3. Database & Export
-These scripts turn the model output in `results/` into the artifacts published in the [Drug-Prot data deposit](https://doi.org/10.5281/zenodo.21508013): the Parquet store that backs the [Shiny application](https://github.com/markusul/DrugProt), and the human-readable CSV export. Run them after the analysis pipeline has completed.
+These scripts turn the model output in `results/` into the artifacts published in the [Drug-Prot data deposit](https://doi.org/10.5281/zenodo.21508012): the Parquet store that backs the [Shiny application](https://github.com/markusul/DrugProt), and the human-readable CSV export. Run them after the analysis pipeline has completed.
 
-1.  `effecsOrganization.R`: Collects the estimated coefficients per drug and per protein into `results/Coef/`.
-2.  `buildDatabase.R`: Collects all p-values and coefficients into a single indexed SQLite database.
-3.  `sqliteToParquet.R`: Converts that database into one compressed Parquet file per table.
-4.  `exportPvaluesWithEffects.R`: Writes the human-readable CSV export, with effect magnitudes attached per row.
+1.  `effecsOrganization.R`: Collects the estimated coefficients per drug (direct and total effects) and per protein into `results/Coef/`.
+2.  `computeEta.R`: Computes the bias factor $\eta_j$ of every predictor (Zhang and Zhang, 2014), which the export reports next to each p-value.
+3.  `buildDatabase.R`: Collects all p-values and coefficients into a single indexed SQLite database. Drug p-values and coefficients carry an `effect_type` column (`direct` or `total`).
+4.  `sqliteToParquet.R`: Converts that database into one compressed Parquet file per table.
+5.  `exportPvaluesWithEffects.R`: Writes the human-readable CSV export, with effect magnitudes and $\eta$ attached per row.
 
 > *Note: `sqliteToParquet.R` exports every table it finds, including SQLite's internal `sqlite_stat1` and `sqlite_stat4` tables created by the closing `ANALYZE`. Remove these before publishing the Parquet directory.*
 
@@ -109,29 +117,30 @@ To deploy the application locally, copy `data/parquet/` into the root of the [Dr
 
 | Script | Needs (Input) | Generates (Output) |
 | :--- | :--- | :--- |
-| `R/pvalues/getZ.R` | `data/laggedData.RData` | `Z/6.RData`<br>`Z/24.RData`<br>`Z/48.RData` |
-| `R/pvalues/drugInteraction.R` | `data/laggedData.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData` | `results/DrugEffects/...`<br>`results/ProteinEffects/...` |
-| `R/pvalues/pValOrganization.R` | `data/order.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/DrugEffects.RData`<br>`results/proteinNetworkPval.RData`<br>`results/proteinNetworkPval_pvalue.RData` |
-| `R/pvalues/validationOfPvalues.R` | `data/laggedData.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData` | `results/PvalAnalysis.RData` |
-| `R/pvalues/pValVis.R` | `data/drugLookup.RData`<br>`data/order.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData`<br>`results/proteinNetworkPval.RData`<br>`results/anchor_opt/proteinSelection.RData` | **All P-value Plots**<br>`results/P_Results.txt` |
+| `R/pvalues/getZ.R` | `data/laggedData.RData` | `Z/6.RData`<br>`Z/24.RData`, `Z/48.RData`<br>`Z/24_mode2.RData`, `Z/48_mode2.RData` |
+| `R/pvalues/drugInteraction.R` | `data/laggedData.RData`<br>`Z/*.RData` | `results/DrugEffects/{protein}_{hours}.RData`<br>`results/DrugEffects/{protein}_{hours}_mode2.RData`<br>`results/ProteinEffects/...` |
+| `R/pvalues/validationOfPvalues.R` | `data/laggedData.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/PvalAnalysis.RData` |
+| `R/pvalues/pValOrganization.R` | `data/order.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/DrugEffects.RData`<br>`results/DrugEffects_total.RData`<br>`results/proteinNetworkPval.RData`<br>`results/proteinNetworkPval_pvalue.RData` |
+| `R/pvalues/pValVis.R` | `data/drugLookup.RData`<br>`data/order.RData`<br>`Z/6.RData`, `Z/24.RData`, `Z/48.RData`<br>`results/DrugEffects.RData`<br>`results/proteinNetworkPval.RData`<br>`results/PvalAnalysis.RData`<br>`results/anchor_opt/proteinSelection.RData` | **All P-value Plots**<br>`results/P_Results.txt` |
 
 ### 3. Anchor Forest Analysis
 
 | Script | Needs (Input) | Generates (Output) |
 | :--- | :--- | :--- |
 | `R/anchorForest/anchorG_CV.R` | `R/anchorForest/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData` | `results/anchorG/...` |
-| `R/anchorForest/anchorG_opt.R` | `R/anchorForest/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData` | `results/anchorG_opt.RData` |
+| `R/anchorForest/anchorG_opt.R` | `R/anchorForest/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData`<br>`results/anchor_opt/gamma_opt.RData` | `results/anchorG_opt.RData` |
 | `R/anchorForest/anchorG_opt_res.R` | `results/anchorG_opt.RData` | `results/anchor_opt/var_importance.RData`<br>`results/anchor_opt/regPath.RData`<br>`results/anchor_opt/stability_selection.RData`<br>`results/anchor_opt/partial_dependence.RData` |
-| `R/anchorForest/anchorG_vis.R` | `R/anchorForest/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData`<br>`data/order.RData`<br>`results/anchorG/...`<br>`results/anchor_opt/var_importance.RData`<br>`results/anchor_opt/regPath.RData`<br>`results/anchor_opt/stability_selection.RData`<br>`results/anchor_opt/partial_dependence.RData` | **Anchor Forest Plots**<br>`results/A_Results.txt`<br>`results/anchor_opt/proteinSelection.RData`<br>`results/most_important_proteins.txt` |
+| `R/anchorForest/anchorG_vis.R` | `R/anchorForest/utils.R`<br>`data/aggData.RData`<br>`data/protNames.RData`<br>`data/order.RData`<br>`results/anchorG/...`<br>`results/anchor_opt/var_importance.RData`<br>`results/anchor_opt/regPath.RData`<br>`results/anchor_opt/stability_selection.RData`<br>`results/anchor_opt/partial_dependence.RData` | First pass: `results/anchor_opt/gamma_opt.RData`<br>Second pass: **Anchor Forest Plots**<br>`results/A_Results.txt`<br>`results/anchor_opt/proteinSelection.RData`<br>`results/most_important_proteins.txt` |
 
 ### 4. Database & Export
 
 | Script | Needs (Input) | Generates (Output) |
 | :--- | :--- | :--- |
-| `R/pvalues/effecsOrganization.R` | `data/order.RData`<br>`data/laggedData.RData`<br>`data/drugLookup.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/Coef/drugs/treatNames.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` |
-| `R/postprocessing/buildDatabase.R` | `data/order.RData`<br>`data/drugLookup.RData`<br>`results/DrugEffects.RData`<br>`results/proteinNetworkPval_pvalue.RData`<br>`results/Coef/drugs/treatNames.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/drugprot.sqlite` |
+| `R/pvalues/effecsOrganization.R` | `data/order.RData`<br>`data/laggedData.RData`<br>`data/drugLookup.RData`<br>`results/DrugEffects/...`<br>`results/ProteinEffects/...` | `results/Coef/drugs/treatNames.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/drugs_total/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` |
+| `R/pvalues/computeEta.R` | `data/laggedData.RData`<br>`results/DrugEffects.RData`<br>`Z/*.RData` | `results/eta.RData` |
+| `R/postprocessing/buildDatabase.R` | `data/order.RData`<br>`data/drugLookup.RData`<br>`results/DrugEffects.RData`<br>`results/DrugEffects_total.RData`<br>`results/proteinNetworkPval_pvalue.RData`<br>`results/Coef/drugs/treatNames.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/drugs_total/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/drugprot.sqlite` |
 | `R/postprocessing/sqliteToParquet.R` | `data/drugprot.sqlite` | `data/parquet/*.parquet` |
-| `R/postprocessing/exportPvaluesWithEffects.R` | `data/parquet/`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/downloads/drug_pvalues_effects.csv.gz`<br>`data/downloads/protein_network_effects.csv.gz` |
+| `R/postprocessing/exportPvaluesWithEffects.R` | `data/parquet/`<br>`results/eta.RData`<br>`results/Coef/drugs/{drug}.RData`<br>`results/Coef/drugs_total/{drug}.RData`<br>`results/Coef/proteins/{protein}_{hours}.RData` | `data/downloads/drug_pvalues_effects.csv.gz`<br>`data/downloads/protein_network_effects.csv.gz` |
 
 </details>
 
@@ -172,6 +181,7 @@ graph TD
         S5(R/pvalues/drugInteraction.R):::script
         S6(R/pvalues/pValOrganization.R):::script
         S7(R/pvalues/pValVis.R):::script
+        S16(R/pvalues/validationOfPvalues.R):::script
 
         D4 --> S4
         S4 --> Z[Z/*.RData]:::file
@@ -182,7 +192,10 @@ graph TD
         S6 --> R3[results/DrugEffects.RData]:::file
         S6 --> R4[results/proteinNetworkPval.RData]:::file
         S6 --> R8[results/proteinNetworkPval_pvalue.RData]:::file
-        D5 & D6 & Z & R4 --> S7
+        S6 --> R9[results/DrugEffects_total.RData]:::file
+        D4 & Z & R1 & R2 --> S16
+        S16 --> R10[results/PvalAnalysis.RData]:::file
+        D5 & D6 & Z & R3 & R4 & R10 --> S7
         S7 --> O1[P-value Plots]:::output
     end
 
@@ -196,11 +209,13 @@ graph TD
 
         D2 & D3 & Utils --> S8
         S8 --> R5[results/anchorG/*]:::file
-        D2 & D3 & Utils --> S9
+        R5 -->|first pass| S11
+        S11 -->|first pass| G[results/anchor_opt/gamma_opt.RData]:::file
+        D2 & D3 & Utils & G --> S9
         S9 --> R6[results/anchorG_opt.RData]:::file
         R6 --> S10
         S10 --> R7[results/anchor_opt/*]:::file
-        D2 & D3 & D5 & Utils & R5 & R7 --> S11
+        D2 & D3 & D5 & Utils & R7 -->|second pass| S11
         S11 --> O2[Anchor Forest Plots]:::output
     end
 
@@ -209,14 +224,17 @@ graph TD
         S13(R/postprocessing/buildDatabase.R):::script
         S14(R/postprocessing/sqliteToParquet.R):::script
         S15(R/postprocessing/exportPvaluesWithEffects.R):::script
+        S17(R/pvalues/computeEta.R):::script
 
         D5 & D4 & D6 & R1 & R2 --> S12
         S12 --> Coef[results/Coef/*]:::file
-        D1 & D6 & R3 & R8 & Coef --> S13
+        D4 & Z & R3 --> S17
+        S17 --> ETA[results/eta.RData]:::file
+        D1 & D6 & R3 & R8 & R9 & Coef --> S13
         S13 --> DB[data/drugprot.sqlite]:::file
         DB --> S14
         S14 --> PQ[data/parquet/*]:::file
-        PQ & Coef --> S15
+        PQ & Coef & ETA --> S15
         S15 --> CSV[data/downloads/*.csv.gz]:::output
     end
 
