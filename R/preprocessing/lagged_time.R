@@ -8,10 +8,6 @@ load("data/protNames.RData")
 abundand <- apply(data[, prot_names], 2, function(x) length(unique(x)) > 10)
 prot_names <- prot_names[abundand]
 
-# E[P0|C]
-dat0 <- data[data$pert_time == 0, ]
-dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = median)
-
 # sort drugs by information
 drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
@@ -34,13 +30,7 @@ nTreatment <- length(unique(data[, "pertLabel"]))-2
 save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names, 
      expTimes, nTreatment)
 
-# add E[P0|C] to data
-names(dat0)[-1] <- paste0(names(dat0)[-1], "_0")
-row.names(dat0) <- dat0[, 1]
-dat0 <- dat0[data$protein_plate, -1]
-
 dat <- data
-dat <- cbind(dat, dat0)
 
 # remove M453(ATCC) (no baseline protein expression)
 dat <- dat[dat$protein_plate != "M453(ATCC)", ]
@@ -68,6 +58,13 @@ for(p in prot_names){
     datI[plate, p] <- add_noise_to_imputation(datI[plate, p])
   }
 }
+
+# E[P0|C] from the imputed controls, so baseline and treated samples share the same imputation
+dat0 <- datI[datI$pert_time == 0, ]
+dat0 <- aggregate(dat0[, prot_names], by = list(dat0$protein_plate), FUN = median)
+names(dat0)[-1] <- paste0(names(dat0)[-1], "_0")
+row.names(dat0) <- dat0[, 1]
+datI <- cbind(datI, dat0[datI$protein_plate, -1])
 
 ### collect aggregated lagged times
 # unique experiments E[Pt|C,D]
