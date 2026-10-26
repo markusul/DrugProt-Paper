@@ -12,7 +12,7 @@ load("data/laggedData.RData")
 load("results/DrugEffects.RData")    # treatment, the label order used everywhere downstream
 expTimes <- c(6, 24, 48)
 
-bias_factor <- function(design, Z, nDrug) {
+bias_factor <- function(design, Z, labels_model) {
   stopifnot(nrow(Z) == nrow(design), ncol(Z) == ncol(design))
   n <- nrow(design)
   X <- scale(design) * sqrt(n / (n - 1))
@@ -20,8 +20,11 @@ bias_factor <- function(design, Z, nDrug) {
   C <- abs(crossprod(Z, X))
   diag(C) <- 0
   # partner column of the same treatment group
-  C[cbind(1:(2 * nDrug), c((nDrug + 1):(2 * nDrug), 1:nDrug))] <- 0
-  eta <- apply(C, 1, max) / sqrt(colSums(Z^2))
+  for (g in split(seq_along(labels_model), labels_model)) 
+    if (length(g) == 2){
+      C[g[1], g[2]] <- C[g[2], g[1]] <- 0  
+      eta <- apply(C, 1, max) / sqrt(colSums(Z^2))
+    }
   rm(C, X); invisible(gc())
   eta
 }
@@ -34,13 +37,11 @@ for (k in seq_along(expTimes)) {
 
   # drug design exactly as in drugInteraction.R
   D <- datI[datI$pert_time == tp, pert_names]
-  drug_design <- model.matrix(~ -1 + .^2, data = D)
-  drug_design <- drug_design[, apply(drug_design, 2, function(x) length(unique(x))) != 1]
-  stopifnot(identical(colnames(drug_design), treatment))
-  nDrug <- ncol(drug_design)
-  drug_intercept <- drug_design
-  drug_intercept[drug_design != 0] <- 1
-  drug_design <- cbind(drug_design, drug_intercept)
+  dd <- drugDesign(D)
+  stopifnot(identical(dd$labels, treatment))
+  nDrug <- length(dd$labels)
+  nCol <- length(dd$labels_model)
+  drug_design <- dd$design
 
   modes <- if (k == 1) "direct" else c("direct", "total")
   for (et in modes) {
@@ -53,13 +54,13 @@ for (k in seq_along(expTimes)) {
     }
     load(if (et == "total") paste0("Z/", tp, "_mode2.RData") else paste0("Z/", tp, ".RData"))
 
-    eta <- bias_factor(design, Z, nDrug)
-    eta_group <- pmax(eta[1:nDrug], eta[(nDrug + 1):(2 * nDrug)])
+    eta <- bias_factor(design, Z, dd$labels_model)
+    eta_group <- sapply(split(eta[1:nCol], factor(dd$labels_model, levels = dd$labels)), max)
     eta_drug[[length(eta_drug) + 1]] <- data.frame(
       effect_type = et, treatment = seq_len(nDrug), time_idx = k, eta = eta_group)
     if (et == "direct" && k > 1) {
       eta_protein[[length(eta_protein) + 1]] <- data.frame(
-        source = seq_along(prot_names), time_idx = k - 1, eta = eta[-(1:(2 * nDrug))])
+        source = seq_along(prot_names), time_idx = k - 1, eta = eta[-(1:nCol)])
     }
     message(sprintf("%d h, %s effects: median eta %.2f", tp, et, median(eta)))
   }

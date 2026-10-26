@@ -1,6 +1,7 @@
 args = commandArgs(trailingOnly = TRUE)
 start_time <- Sys.time()
 
+source("R/pvalues/drugDesign.R")
 library(hdi)
 RNGkind("L'Ecuyer-CMRG")
 set.seed(22)
@@ -19,23 +20,10 @@ print(tp)
 Y_full <- datI[datI$pert_time == tp, P] - datI[datI$pert_time == tp, paste0(P, "_0")]
 D <- datI[datI$pert_time == tp, pert_names]
 
-## prepare design matrix with interactions
-drug_design <- model.matrix(~ -1 + .^2, data = D)
-dLabels <- c(colnames(drug_design), colnames(drug_design))
-
-# remove treatments without data
-with_data <- apply(drug_design, 2, function(x) length(unique(x))) != 1
-drug_design <- drug_design[, with_data]
-dLabels_measured <- colnames(drug_design)
-dlabels_model <- c(dLabels_measured, dLabels_measured)
-
-# add intercept to each treatment
-drug_intercept <- drug_design
-drug_intercept[drug_design != 0] <- 1
-colnames(drug_intercept) <- paste0(colnames(drug_design), "_intercept")
-
-# combine intercept and drug design
-drug_design <- cbind(drug_design, drug_intercept)
+dd <- drugDesign(D)
+drug_design <- dd$design
+dLabels_measured <- dd$labels
+dlabels_model <- dd$labels_model
 design <- drug_design
 
 #protein design

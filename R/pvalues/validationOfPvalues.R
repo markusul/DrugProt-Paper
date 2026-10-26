@@ -1,5 +1,6 @@
 start_time <- Sys.time()
 
+source("R/pvalues/drugDesign.R")
 library(hdi)
 RNGkind("L'Ecuyer-CMRG")
 set.seed(22)
@@ -27,22 +28,10 @@ load(paste0('Z/', tp, '.RData'))
 # Data for model
 D <- datI[datI$pert_time == tp, pert_names]
 
-## prepare design matrix with interactions
-drug_design <- model.matrix(~ -1 + .^2, data = D)
-
-# remove treatments without data
-with_data <- apply(drug_design, 2, function(x) length(unique(x))) != 1
-drug_design <- drug_design[, with_data]
-dLabels_measured <- colnames(drug_design)
-dlabels_model <- c(dLabels_measured, dLabels_measured)
-
-# add intercept to each treatment
-drug_intercept <- drug_design
-drug_intercept[drug_design != 0] <- 1
-colnames(drug_intercept) <- paste0(colnames(drug_design), "_intercept")
-
-# combine intercept and drug design
-drug_design <- cbind(drug_design, drug_intercept)
+dd <- drugDesign(D)
+drug_design <- dd$design
+dLabels_measured <- dd$labels
+dlabels_model <- dd$labels_model
 design <- drug_design
 
 #protein design
@@ -69,7 +58,8 @@ res <- lapply(sampleP_vec, function(sampleP){
   load(file)
   drugEffects <- do.call(rbind, effects.drugs)
   
-  sampledEffects <- c(drugEffects[, 1], drugEffects[, 2])
+  sampledEffects <- numeric(length(dlabels_model))
+  for(l in dLabels_measured) sampledEffects[which(dlabels_model == l)] <- effects.drugs[[l]]
   
   if(laggedTime > 0){
     file <- paste0("results/ProteinEffects/", sampleP, "_", tp, ".RData")
@@ -114,7 +104,7 @@ res <- lapply(sampleP_vec, function(sampleP){
   nFailed <- sum(colSums(is.na(resMat)) == nOut)
   ratioOfEffects <- rowMeans(resMat, na.rm = TRUE)
   
-  true_effects <- apply(drugEffects, 1, function(x) any(x != 0))
+  true_effects <- sapply(effects.drugs, function(x) any(x != 0))
   if(laggedTime > 0){
     true_effects <- c(true_effects, betahat != 0)
   }

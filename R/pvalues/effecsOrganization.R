@@ -1,5 +1,6 @@
 load('data/order.RData')
 load("data/laggedData.RData")
+source("R/pvalues/drugDesign.R")
 
 tp <- expTimes[2]
 D <- datI[datI$pert_time == tp, pert_names]
@@ -60,23 +61,10 @@ suffix <- if(effect_type == "total" && tp != expTimes[1]) "_mode2" else ""
   
 D <- datI[datI$pert_time == tp, pert_names]
 
-## prepare design matrix with interactions
-drug_design <- model.matrix(~ -1 + .^2, data = D)
-dLabels <- c(colnames(drug_design), colnames(drug_design))
-
-# remove treatments without data
-with_data <- apply(drug_design, 2, function(x) length(unique(x))) != 1
-drug_design <- drug_design[, with_data]
-dLabels_measured <- colnames(drug_design)
-dlabels_model <- c(dLabels_measured, dLabels_measured)
-
-# add intercept to each treatment
-drug_intercept <- drug_design
-drug_intercept[drug_design != 0] <- 1
-colnames(drug_intercept) <- paste0(colnames(drug_design), "_intercept")
-
-# combine intercept and drug design
-drug_design <- cbind(drug_design, drug_intercept)
+dd <- drugDesign(D)
+drug_design <- dd$design
+dLabels_measured <- dd$labels
+dlabels_model <- dd$labels_model
 
 
 res <- sapply(1:length(prot_names), function(protein){

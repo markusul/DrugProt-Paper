@@ -52,23 +52,19 @@ for(i in c("6", "24", "48")){
   print(dim(Z))
 }
 
-# total number of parameters in the model
-alpha_n <- nSingleDrugs * 2 * 3
-beta_n <- nComboDrugs * 2 * 3
-gamma_n <- nProt * 2
-(alpha_n + beta_n + gamma_n) * nProt #times the number of models
+# number of parameters per model, read from the projections (drug and lagged protein columns)
+nPar <- sapply(c("6", "24", "48"), function(i){ load(paste0("Z/", i, ".RData")); ncol(Z) })
+
+# total number of parameters in the model, over all three time points and all response proteins
+sum(nPar) * nProt
 P_Results <- c(P_Results, paste0("Total number of parameters in the overall model: ", 
-                                   (alpha_n + beta_n + gamma_n) * nProt))
+                                 sum(nPar) * nProt))
 
 # number of parameters in equation 1
-nSingleDrugs * 2 + nComboDrugs * 2
-P_Results <- c(P_Results, paste0("Number of parameters in equation 1: ", 
-                                   nSingleDrugs * 2 + nComboDrugs * 2))
+P_Results <- c(P_Results, paste0("Number of parameters in equation 1: ", nPar["6"]))
 
 # number of parameters in equation 2 and 3
-nSingleDrugs * 2 + nComboDrugs * 2 + nProt
-P_Results <- c(P_Results, paste0("Number of parameters in equation 2 and 3: ", 
-                                  nSingleDrugs * 2 + nComboDrugs * 2 + nProt))
+P_Results <- c(P_Results, paste0("Number of parameters in equation 2 and 3: ", nPar["24"]))
 
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
