@@ -35,28 +35,27 @@ dat <- data
 # remove M453(ATCC) (no baseline protein expression)
 dat <- dat[dat$protein_plate != "M453(ATCC)", ]
 
-# impute values below the detection border by the conditional mean of a normal fitted to the observed values, truncated at the border
-# deterministic, so the results do not depend on a random draw
-add_noise_to_imputation <- function(x){
-  if(length(unique(x)) < 3) return(x)
-  
-  border <- sort(unique(x))[2]
-  imp <- which(x < border)
+load("data/na_count.RData")   # share of missing values per protein, before the floor imputation
+
+# impute values at the detection floor by the conditional mean of a normal fitted to the observed values, truncated at the smallest observed value
+add_imputation <- function(x, floor){
+  imp <- which(x <= floor + 1e-8)
+  if(length(imp) == 0 || length(unique(x[-imp])) < 2) return(x)
   x_ <- x[-imp]
-  y <- x
-  y[imp] <- truncnorm::etruncnorm(a = -Inf, b = border, mean = mean(x_), sd = sd(x_))
-  y
+  x[imp] <- truncnorm::etruncnorm(a = -Inf, b = min(x_), mean = mean(x_), sd = sd(x_))
+  x
 }
 
-# impute with truncated normal per protein per cell line
 datI <- dat
 plate_idx <- lapply(unique(dat$protein_plate), function(plate) which(dat$protein_plate == plate))
 
 for(p in prot_names){
+  if(na_count[p] == 0) next          # protein without values at the floor
+  floor_p <- min(data[, p])          # 80% of the minimum, global per protein
   for(plate in plate_idx){
-    if(sum(is.na(add_noise_to_imputation(datI[plate, p]))) > 0)stop('nas produced')
-    datI[plate, p] <- add_noise_to_imputation(datI[plate, p])
+    datI[plate, p] <- add_imputation(datI[plate, p], floor_p)
   }
+  if(anyNA(datI[, p])) stop('nas produced')
 }
 
 # E[P0|C] from the imputed controls, so baseline and treated samples share the same imputation
@@ -89,8 +88,9 @@ aggData <- lapply(expTimes, function(prev) {
       print(experiment)
     }
 
-    # mean over replicates
-    colMeans(datI[sel, prot_names])
+    # median over replicates
+    if(sum(sel) == 0) return(rep(NA_real_, length(prot_names)))
+    apply(as.matrix(datI[sel, prot_names, drop = FALSE]), 2, median)
   }))
 })
 
