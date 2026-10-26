@@ -56,8 +56,7 @@ res <- lapply(sampleP_vec, function(sampleP){
   ####### simulate Y ######
   file <- paste0("results/DrugEffects/", sampleP, "_", tp, ".RData")
   load(file)
-  drugEffects <- do.call(rbind, effects.drugs)
-  
+
   sampledEffects <- numeric(length(dlabels_model))
   for(l in dLabels_measured) sampledEffects[which(dlabels_model == l)] <- effects.drugs[[l]]
   

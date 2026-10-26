@@ -8,6 +8,7 @@
 #   eta_protein  source (index in prot_names), time_idx (1 = 6h->24h, 2 = 24h->48h), eta
 # Run from the repository root after getZ.sh.
 
+source("R/pvalues/drugDesign.R")
 load("data/laggedData.RData")
 load("results/DrugEffects.RData")    # treatment, the label order used everywhere downstream
 expTimes <- c(6, 24, 48)
@@ -20,11 +21,9 @@ bias_factor <- function(design, Z, labels_model) {
   C <- abs(crossprod(Z, X))
   diag(C) <- 0
   # partner column of the same treatment group
-  for (g in split(seq_along(labels_model), labels_model)) 
-    if (length(g) == 2){
-      C[g[1], g[2]] <- C[g[2], g[1]] <- 0  
-      eta <- apply(C, 1, max) / sqrt(colSums(Z^2))
-    }
+  for (g in split(seq_along(labels_model), labels_model))
+    if (length(g) == 2) C[g[1], g[2]] <- C[g[2], g[1]] <- 0
+  eta <- apply(C, 1, max) / sqrt(colSums(Z^2))
   rm(C, X); invisible(gc())
   eta
 }
