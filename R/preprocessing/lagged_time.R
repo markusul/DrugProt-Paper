@@ -26,10 +26,6 @@ prot_names_short <- sapply(prot_names, function(p) {
 expTimes <- sort(unique(data$pert_time))[-1]
 nTreatment <- length(unique(data[, "pertLabel"]))-2
 
-# save order and short names
-save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names, 
-     expTimes, nTreatment)
-
 dat <- data
 
 # remove M453(ATCC) (no baseline protein expression)
@@ -110,4 +106,25 @@ for(i in 1:nrow(uniqueExp)){
 }
 datI$label <- label
 
+
+
+# keep proteins whose differential expression varies at every time point, in the samples and in the lagged design
+# proteins below the detection limit almost everywhere have a differential expression of exactly 0 and carry no information
+varies <- function(m) apply(m, 2, function(x) length(unique(x[!is.na(x)])) > 1)
+diffP <- function(tp) as.matrix(datI[datI$pert_time == tp, prot_names]) -
+  as.matrix(datI[datI$pert_time == tp, paste0(prot_names, "_0")])
+lagP <- function(k) {
+  sel <- datI$pert_time == expTimes[k + 1]
+  aggData[[k]][datI$label[sel], ] - as.matrix(datI[sel, paste0(prot_names, "_0")])
+}
+keep <- varies(diffP(6)) & varies(diffP(24)) & varies(diffP(48)) & varies(lagP(1)) & varies(lagP(2))
+cat("proteins without variation removed:", sum(!keep), "of", length(keep), "\n")
+
+prot_names <- prot_names[keep]
+prot_names_short <- prot_names_short[keep]
+aggData <- lapply(aggData, function(a) a[, keep])
+
+# save order and short names
+save(file = 'data/order.RData', prot_names_short, drugOrder, prot_names,
+     expTimes, nTreatment)
 save(datI, prot_names, pert_names, aggData, file = 'data/laggedData.RData')
