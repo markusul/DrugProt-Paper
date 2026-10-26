@@ -83,7 +83,7 @@ dir.create("results/anchor_opt", showWarnings = FALSE, recursive = TRUE)
 save(gamma_opt, worst_env, file = "results/anchor_opt/gamma_opt.RData")
 
 # relative improvement over random forest (gamma = 1)
-perfRF <- dfPerf[dfPerf$gamma == 1, worst_env]
+perfRF <- predict(fit, newdata = data.frame(gamma = 1))
 perfARF <- min(fitted)
 (perfRF - perfARF) / perfRF
 A_Results <- c(A_Results, paste0("Relative improvement over random forest (gamma = 1): ", 
