@@ -12,6 +12,7 @@ export OMP_NUM_THREADS=1
 # stop at the first failing script
 set -e
 
+Rscript --vanilla R/preprocessing/combinationIC50.R
 Rscript --vanilla R/preprocessing/data_preprocessing.R
 Rscript --vanilla R/preprocessing/data_preparation.R
 Rscript --vanilla R/preprocessing/lagged_time.R
