@@ -12,7 +12,7 @@ print("start data preprocessing")
 #   02_protein_intensity_matrix.xlsx   protein intensities, db.prottalks.com
 #   protein_names.csv                  protein identifiers
 #   analysis_samples.csv               sample selection and treatment labels
-#   ic50_values.csv                    viability readout
+#   ic50_values_jaaks.csv              viability readout in uM, from combinationIC50.R
 #
 # Outputs:
 #   data/prepData.RData    the analysis input
@@ -62,7 +62,7 @@ PTV1 <- read_excel(
 
 protein_names    <- read.csv("data/protein_names.csv", stringsAsFactors = FALSE)
 analysis_samples <- read.csv("data/analysis_samples.csv", stringsAsFactors = FALSE)
-ic50_values      <- read.csv("data/ic50_values.csv", stringsAsFactors = FALSE)
+ic50_values      <- read.csv("data/ic50_values_jaaks.csv", stringsAsFactors = FALSE)
 
 protein_columns <- protein_names$protein[order(protein_names$row)]
 stopifnot(nrow(PTV1) == length(protein_columns))
@@ -240,7 +240,9 @@ data_response[drugs == "no"] <- Inf
 
 data <- cbind(data_protein, data_drugs, data_additional, type, pertLabel,
               IC50 = data_response, NY = NA)
-data[data$type == "singleDrug", "IC50"] <- log2(data[data$type == "singleDrug", "IC50"])
+# all IC50 values are in uM, analysed on the log2 scale
+treated <- data$type %in% c("singleDrug", "drugCombination")
+data[treated, "IC50"] <- log2(data[treated, "IC50"])
 
 save(data, file = "data/prepData.RData")
 
