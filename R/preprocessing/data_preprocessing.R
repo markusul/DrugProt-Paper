@@ -180,11 +180,17 @@ data_drugs <- dummy_cols(data.frame(drug = drugs), remove_first_dummy = FALSE)[,
 data_drugs <- data_drugs * 10
 
 # Update drug combinations with actual doses
+# Anchor_dose belongs to the anchor drug, Pert_ID1 of the sample annotation,
+# which is the second drug of pertLabel for part of the combinations
 for (i in combination_idx) {
-  drugAB <- paste0("drug_", strsplit(pertLabel[i], " ")[[1]])
+  ids_i  <- strsplit(pertLabel[i], " ")[[1]]
+  drugAB <- paste0("drug_", ids_i)
   if (all(drugAB %in% colnames(data_drugs))) {
-    data_drugs[i, drugAB[1]] <- Anchor_dose[i]
-    data_drugs[i, drugAB[2]] <- Library_dose[i]
+    stopifnot(info$Pert_ID1[i] %in% ids_i)
+    anchor_col  <- paste0("drug_", info$Pert_ID1[i])
+    library_col <- setdiff(drugAB, anchor_col)
+    data_drugs[i, anchor_col]  <- Anchor_dose[i]
+    data_drugs[i, library_col] <- Library_dose[i]
   }
 }
 
