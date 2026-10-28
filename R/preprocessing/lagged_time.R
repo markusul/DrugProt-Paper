@@ -117,7 +117,11 @@ lagP <- function(k) {
   sel <- datI$pert_time == expTimes[k + 1]
   aggData[[k]][datI$label[sel], ] - as.matrix(datI[sel, paste0(prot_names, "_0")])
 }
-keep <- varies(diffP(6)) & varies(diffP(24)) & varies(diffP(48)) & varies(lagP(1)) & varies(lagP(2))
+# responses at 24 and 48 hours as used in the direct-effect models, on the samples with lagged measurements
+lagRows <- function(k) !is.na(lagP(k)[, 1])
+keep <- varies(diffP(6)) & varies(diffP(24)) & varies(diffP(48)) &
+  varies(diffP(24)[lagRows(1), , drop = FALSE]) & varies(diffP(48)[lagRows(2), , drop = FALSE]) &
+  varies(lagP(1)) & varies(lagP(2))
 cat("proteins without variation removed:", sum(!keep), "of", length(keep), "\n")
 
 prot_names <- prot_names[keep]
