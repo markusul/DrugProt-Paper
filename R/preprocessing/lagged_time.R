@@ -110,7 +110,15 @@ datI$label <- label
 
 # keep proteins whose differential expression varies at every time point, in the samples and in the lagged design
 # proteins below the detection limit almost everywhere have a differential expression of exactly 0 and carry no information
-varies <- function(m) apply(m, 2, function(x) length(unique(x[!is.na(x)])) > 1)
+# a column needs at least minInfo samples away from its most frequent value, so that it
+# still varies in every training fold of the cross-validation in hdi
+minInfo <- 10
+varies <- function(m) apply(m, 2, function(x) {
+  x <- x[!is.na(x)]
+  u <- unique(x)
+  sum(x != u[which.max(tabulate(match(x, u)))]) >= minInfo
+})
+
 diffP <- function(tp) as.matrix(datI[datI$pert_time == tp, prot_names]) -
   as.matrix(datI[datI$pert_time == tp, paste0(prot_names, "_0")])
 lagP <- function(k) {
