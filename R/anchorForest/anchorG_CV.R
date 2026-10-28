@@ -20,7 +20,7 @@ pertLabel <- dat$pertLabel
 X <- X[, apply(X, 2, function(x)length(unique(x))) >= 200]
 n <- length(Y)
 
-# define 8 drug combination groups based on equal anchor drug
+# define 8 groups of drug combinations that share the first drug of their label
 anchor_dose <- sapply(strsplit(perturbations, ' '), function(x) x[1])
 Groups <- unique(anchor_dose)
 
