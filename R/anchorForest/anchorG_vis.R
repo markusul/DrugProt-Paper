@@ -65,7 +65,7 @@ dfPerf_g <- gather(dfPerf, 'environment', 'mse', -gamma)
 dfPerf_g$environment <- as.factor(dfPerf_g$environment)
 levels(dfPerf_g$environment) <- 1:8
 
-# most difficult environment, the one with the largest mean OOD MSE over gamma
+# most difficult environment, the one with the largest OOD MSE of the standard Random Forest (gamma = 1)
 worst_env <- rownames(mse)[which.max(mse[, gamma_vec == 1])]
 print(worst_env)
 
@@ -83,8 +83,9 @@ dir.create("results/anchor_opt", showWarnings = FALSE, recursive = TRUE)
 save(gamma_opt, worst_env, file = "results/anchor_opt/gamma_opt.RData")
 
 # relative improvement over random forest (gamma = 1)
-perfRF <- predict(fit, newdata = data.frame(gamma = 1))
-perfARF <- min(fitted)
+# relative improvement over random forest (gamma = 1) in the most difficult environment
+perfRF  <- dfPerf[dfPerf$gamma == 1, worst_env]
+perfARF <- min(dfPerf[, worst_env])
 (perfRF - perfARF) / perfRF
 A_Results <- c(A_Results, paste0("Relative improvement over random forest (gamma = 1): ", 
                                   round((perfRF - perfARF) / perfRF, 6)))
