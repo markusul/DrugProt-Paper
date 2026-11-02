@@ -57,6 +57,7 @@ qPerf <- mse
 dfPerf <- data.frame(t(qPerf))
 names(dfPerf) <- rownames(mse)
 dfPerf$gamma <- gamma_vec ** 2
+dfPerf <- dfPerf[dfPerf$gamma >= 1, ]
 
 # plot OOD performance vs gamma
 xseq <- seq(min(dfPerf$gamma), max(dfPerf$gamma), length.out = 10000)
@@ -65,16 +66,15 @@ dfPerf_g$environment <- as.factor(dfPerf_g$environment)
 levels(dfPerf_g$environment) <- 1:8
 
 # most difficult environment, the one with the largest mean OOD MSE over gamma
-worst_env <- rownames(mse)[which.max(rowMeans(mse))]
+worst_env <- rownames(mse)[which.max(mse[, gamma_vec == 1])]
 print(worst_env)
+
 A_Results <- c(A_Results, paste0("Most difficult environment: ", worst_env))
 
-# smooth worst case environment curve
-fit <- stats::loess(as.formula(paste0("`", worst_env, "` ~ gamma")), dfPerf)
-fitted <- predict(fit, newdata = data.frame(gamma = xseq))
 # optimal gamma for most difficult environment
-gamma_opt <- xseq[which.min(fitted)]
+gamma_opt <- dfPerf[which.min(dfPerf[, worst_env]), "gamma"]
 gamma_opt
+
 A_Results <- c(A_Results, paste0("Optimal gamma for most difficult environment: ", 
                                   round(gamma_opt, 6)))
 
@@ -97,8 +97,7 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) +
   geom_point(aes(col = environment, shape = environment), size = 0.6) + 
   scale_shape_manual(values=0:7) +
   geom_vline(xintercept = 1) +
-  ylab("OOD MSE") + xlab(expression(gamma)) + 
-  ylim(7.4, 14)
+  ylab("OOD MSE") + xlab(expression(gamma))
 
 ggAnchor
 ggsave("figures/AnchorCV.jpeg", width = 6, height = 3)
