@@ -110,6 +110,19 @@ mean_perf
 A_Results <- c(A_Results, paste0("Performance of mean prediction per environment: ", 
                                   paste(round(mean_perf, 4), collapse = ", ")))
 
+# standard Random Forest (gamma = 1) against the constant prediction by the training mean, per environment
+env_names  <- rownames(mse)
+rf_perf    <- unlist(dfPerf[dfPerf$gamma == 1, env_names])
+const_perf <- mean_perf[env_names]
+gain_rf    <- (const_perf - rf_perf) / const_perf
+A_Results <- c(A_Results, paste0("Relative improvement of the standard Random Forest over the training mean per environment: ",
+                                 paste(env_names, round(gain_rf, 3), sep = ": ", collapse = ", ")))
+A_Results <- c(A_Results, paste0("Range of this improvement: ", round(min(gain_rf), 3), " to ", round(max(gain_rf), 3)))
+
+# spread of the out-of-environment MSE over gamma >= 1 in the most difficult environment
+A_Results <- c(A_Results, paste0("OOE MSE of the most difficult environment over gamma >= 1: ",
+                                 round(min(dfPerf[, worst_env]), 3), " to ", round(max(dfPerf[, worst_env]), 3)))
+
 # first pass after anchorG_CV.R ends here, second pass after anchorG_opt_res.R continues
 if(!file.exists("results/anchor_opt/var_importance.RData")){
   message("gamma_opt saved, run anchorG_opt.R and anchorG_opt_res.R, then this script again")
@@ -129,15 +142,15 @@ boxplot(which(times == "48"), ylim = c(0, 20000))
 
 # 40 most important proteins
 imp_s <- which(var_importance >= sort(var_importance, decreasing = T)[40])
-# 3 most important proteins
-sort(var_importance, decreasing = T)[1:3]
+# most important proteins
+sort(var_importance, decreasing = T)[1:10]
   
 # regularization path
 load("results/anchor_opt/regPath.RData")
 gg_path <- plot(path, sqrt_scale = T)
 gg_path
 
-plot(path, plotly = TRUE, imp_s)
+#plot(path, plotly = TRUE, imp_s)
 
 
 plotOOB(path)
@@ -201,8 +214,8 @@ A_Results <- c(A_Results, paste0("Number of unique selected proteins (regulariza
 A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0.5): ", 
                                   paste(unique(path_s), collapse = ", ")))
 
-# 3 most important proteins
-most_imp <- sort(var_importance, decreasing = T)[1:3]
+# most important proteins
+most_imp <- var_importance[var_importance > 2]
 # timepoints of most important proteins
 times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
@@ -210,10 +223,10 @@ most_imp_h <- paste(most_imp, paste0(times_imp, 'h'))
 
 times_imp <- table(times_imp)
 
-A_Results <- c(A_Results, paste0("Timepoints of 3 most important proteins: ", 
+A_Results <- c(A_Results, paste0("Timepoints of most important proteins: ", 
                                   paste(names(times_imp), times_imp, sep = ": ", collapse = ", ")))
 
-A_Results <- c(A_Results, paste0("3 most important proteins: ", 
+A_Results <- c(A_Results, paste0("Most important proteins: ", 
                                   paste(most_imp_h, collapse = ", ")))
 
 # save most important proteins to txt as example

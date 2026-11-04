@@ -68,7 +68,7 @@ P_Results <- c(P_Results, paste0("Number of parameters in equation 2 and 3: ", n
 
 # proteins of interest
 load("results/anchor_opt/proteinSelection.RData")
-P_selection <- which(prot_names_short %in% path_s)
+P_selection <- which(prot_names_short %in% most_imp)
 stopifnot(all(unique(path_s) %in% prot_names_short))
 nSelection <- length(P_selection)
 P_Results <- c(P_Results, paste0("Number of selected proteins by AnchorForest: ", nSelection))
@@ -105,6 +105,29 @@ P_Results <- c(P_Results, "Percentage of significant drug combinations out of al
 P_Results <- c(P_Results, paste0("Time point 6h: ", nSigDrug_oComb[1]/nDrug_oComb))
 P_Results <- c(P_Results, paste0("Time point 24h: ", nSigDrug_oComb[2]/nDrug_oComb))
 P_Results <- c(P_Results, paste0("Time point 48h: ", nSigDrug_oComb[3]/nDrug_oComb))
+
+# total effects of the drugs, Holm correction over all total effects
+load("results/DrugEffects_total.RData")
+allPvecsTotalAdj <- array(p.adjust(allPvecsTotal, method = "holm"), dim = dim(allPvecsTotal))
+nSigTotal <- apply(allPvecsTotalAdj, 2, function(p) sum(p < alpha))
+nSigTotal
+P_Results <- c(P_Results, "Number of significant total drug effects over time (separate Holm correction)")
+P_Results <- c(P_Results, paste0("Time point ", c(6, 24, 48), "h: ", nSigTotal))
+
+# concentration of the significant single-drug effects at 6 h on few proteins
+sig6 <- t(allPvecsAdj[!drugComb, 1, ] < alpha)       # proteins x single drugs
+pos6 <- sapply(which(!drugComb), function(d){
+  load(paste0("results/Coef/drugs/", d, ".RData"))
+  dEff[, 1] > 0
+})
+nSigPerProt <- rowSums(sig6)
+P_Results <- c(P_Results, paste0("Number of significant single-drug effects at 6h: ", sum(sig6)))
+P_Results <- c(P_Results, paste0("Share of positive significant single-drug effects at 6h: ",
+                                 round(mean(pos6[sig6]), 3)))
+P_Results <- c(P_Results, paste0("Proteins with 0, 1, 2-5, 6-20, more than 20 significant single drugs at 6h: ",
+                                 paste(table(cut(nSigPerProt, c(-1, 0, 1, 5, 20, Inf))), collapse = ", ")))
+P_Results <- c(P_Results, paste0("Share of significant single-drug effects at 6h on proteins with more than 5 significant single drugs: ",
+                                 round(sum(nSigPerProt[nSigPerProt > 5]) / sum(sig6), 3)))
 
 
 #adjust p values of drug effects on selected proteins
@@ -208,8 +231,11 @@ nProt * nProt * 2
 P_Results <- c(P_Results, paste0("Number of possible edges in the FULL temporal graph: ", 
                                   nProt * nProt * 2))
 
-# sanity check
-nProt * nProt * 2 + prod(dim(allPvecs)) * 2 == (alpha_n + beta_n + gamma_n) * nProt
+# number of p-values in Drug-Prot: protein edges at two transitions, group p-values of the direct
+# drug effects at three time points, and of the total effects at 24 and 48 hours
+nPval <- nProt * nProt * 2 + prod(dim(allPvecs)) + nTreatment * 2 * nProt
+nPval
+P_Results <- c(P_Results, paste0("Number of p-values: ", nPval))
 
 # number of possible edges in the selected summary graph
 ((nProt-nSelection) * nSelection + nSelection * (nSelection-1)/2) * 2
@@ -640,4 +666,3 @@ p <- ggplot(df, aes(x = group, y = rate, fill = group)) +
 
 p
 ggsave("figures/PvalAnalysis.png", p, width = 8, height = 6)
-``

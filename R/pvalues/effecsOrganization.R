@@ -70,7 +70,7 @@ dlabels_model <- dd$labels_model
 res <- sapply(1:length(prot_names), function(protein){
   load(file = paste0('results/DrugEffects/', protein , '_', tp, suffix, '.RData'))
   sapply(effects.drugs.debiased, function(dEffect){
-    total_effects <- drug_design[, names(dEffect)] %*% dEffect
+    total_effects <- drug_design[, names(dEffect), drop = FALSE] %*% dEffect
     meanCoef <- mean(total_effects[total_effects != 0])
     meanCoef
   })
