@@ -150,7 +150,7 @@ load("results/anchor_opt/regPath.RData")
 gg_path <- plot(path, sqrt_scale = T)
 gg_path
 
-#plot(path, plotly = TRUE, imp_s)
+plot(path, plotly = TRUE, imp_s)
 
 
 plotOOB(path)
@@ -215,7 +215,7 @@ A_Results <- c(A_Results, paste0("Selected proteins (regularization path, cp > 0
                                   paste(unique(path_s), collapse = ", ")))
 
 # most important proteins
-most_imp <- var_importance[var_importance > 2]
+most_imp <- sort(var_importance[var_importance > 2], decreasing = T)
 # timepoints of most important proteins
 times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
@@ -237,21 +237,48 @@ close(fileConn2)
 # save selected proteins
 save(most_imp, imp_s, path_s, stab_s, file = "results/anchor_opt/proteinSelection.RData")
 
+# largest variable importances, to support the gap between the eighth and ninth predictor
+imp_sorted <- sort(var_importance, decreasing = TRUE)[1:10]
+imp_time <- sapply(strsplit(names(imp_sorted), '_'), function(x) x[length(x)])
+A_Results <- c(A_Results, paste0("Ten largest variable importances: ",
+                                 paste(paste0(imp_to_shortnames(imp_sorted), " ", imp_time, "h"),
+                                       round(imp_sorted, 2), sep = ": ", collapse = ", ")))
+
 # partial dependence plots for the 2 most important proteins
 load("results/anchor_opt/partial_dependence.RData")
-gg3 <- plot(dep3, n_examples = 0) + xlab(most_imp_h[3]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
-  ggtitle("") + ylab("")
+deps <- list(dep1, dep2, dep3)
+dep_imp <- sapply(deps, function(dep) var_importance[names(dep$j)])
+stopifnot(!anyNA(dep_imp))
+deps <- deps[order(dep_imp, decreasing = TRUE)[1:2]]
 
-lab1 <- paste('differential log-protein expression', most_imp_h[2])
+# label from the protein stored in the partial dependence object
+dep_lab <- function(dep) {
+  sp <- strsplit(names(dep$j), '_')[[1]]
+  paste0(imp_to_shortnames(dep$j), " ", sp[length(sp)], "h")
+}
 
-gg2 <- plot(dep2, n_examples = 0) + xlab(most_imp_h[2]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
-  ggtitle("") + ylab("")
-gg1 <- plot(dep1, n_examples = 0) + xlab(most_imp_h[1]) + theme_bw() + ylim(6.25, 7.1) + xlim(-0.5, 0.5) + 
-  ggtitle("") +
-  ylab(expression(widehat(IC50)))
+# mean prediction at the 5%, 50% and 95% quantiles of the observed expression, for the direction in the text
+dep_direction <- function(dep) {
+  q <- quantile(dep$xj, c(0.05, 0.5, 0.95))
+  f <- approx(dep$x_seq, dep$preds_mean, xout = q)$y
+  paste0(dep_lab(dep), ": mean predicted IC50 ", paste(round(f, 2), collapse = ", "),
+         " at the 5%, 50%, 95% quantiles of expression (", paste(round(q, 2), collapse = ", "), ")")
+}
+A_Results <- c(A_Results, "Partial dependence of the two most important proteins:",
+               sapply(deps, dep_direction))
 
-ggdep <- grid.arrange(gg1, gg2, gg3, nrow =1, bottom = "Partial dependence on differential log-protein expression")
-ggsave("figures/AnchorDep.jpeg", ggdep, width = 10.5, height = 3)
+# common y range for both panels, x range of the central 98% of the data
+# coord_cartesian zooms without dropping points, unlike xlim and ylim
+y_range <- range(sapply(deps, function(dep) range(dep$preds_mean)))
+pd_plot <- function(dep) {
+  plot(dep, n_examples = 0) + xlab(dep_lab(dep)) + theme_bw() + ggtitle("") + ylab("") +
+    coord_cartesian(xlim = quantile(dep$xj, c(0.01, 0.99)), ylim = y_range)
+}
+gg1 <- pd_plot(deps[[1]]) + ylab(expression(widehat(IC50)))
+gg2 <- pd_plot(deps[[2]])
+
+ggdep <- grid.arrange(gg1, gg2, nrow = 1, bottom = "Partial dependence on differential log-protein expression")
+ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
 
 # file to save results to
 fileConn <- file("results/A_Results.txt")
