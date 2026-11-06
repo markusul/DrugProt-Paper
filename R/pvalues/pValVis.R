@@ -177,7 +177,8 @@ Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
 
 # number of links in the summary graph
-nLinksFull <- nrow(unique(Links_sum[, -3])) - nProt
+nonself <- Links_sum$source != Links_sum$target
+nLinksFull <- nrow(unique(Links_sum[nonself, c("source", "target")]))
 nLinksFull
 P_Results <- c(P_Results, paste0("Number of links in the FULL summary graph: ", 
                                   nLinksFull))
@@ -209,7 +210,8 @@ Links_sum$target <- Links_sum$target - 1
 Links_sum$value <- 1
 
 # number of links in the summary graph
-nLinksSel <- nrow(unique(Links_sum[, -3])) - length(P_selection)
+nonself <- Links_sum$source != Links_sum$target
+nLinksSel <- nrow(unique(Links_sum[nonself, c("source", "target")]))
 nLinksSel
 P_Results <- c(P_Results, paste0("Number of links in the SELECTED summary graph: ", 
                                   nLinksSel))
@@ -256,13 +258,13 @@ P_Results <- c(P_Results, paste0("Average degree of the FULL summary graph: ",
                                   nLinksFull / nProt * 2))
 
 # selected graph
-SelToSel <- sum(apply(Links_sum,1, function(links){
-  links["source"] %in% P_selection & links["target"] %in% P_selection
-}))
-
-(nLinksSel - SelToSel) / nSelection + SelToSel / nSelection * 2 # only some edges affect two nodes
-P_Results <- c(P_Results, paste0("Average degree of the SELECTED summary graph: ", 
-                                  (nLinksSel - SelToSel) / nSelection + SelToSel / nSelection * 2))
+##    edges between two selected proteins count for both of them
+sel0 <- P_selection - 1   # Links_sum uses zero-based indices
+SelToSel <- nrow(unique(Links_sum[nonself & Links_sum$source %in% sel0 & Links_sum$target %in% sel0,
+                                  c("source", "target")]))
+(nLinksSel + SelToSel) / nSelection
+P_Results <- c(P_Results, paste0("Average degree of the SELECTED summary graph: ",
+                                 (nLinksSel + SelToSel) / nSelection))
 
 #selected nodes + connected nodes
 rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
@@ -546,13 +548,13 @@ Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
 
 # plot
 selected <- (which(Nodes_sum$group == "Selected")-1)
-connectingNodes <- !(table(c(selected, unlist(lapply(selected, function(sel){
+connectingNodes <- which(table(unlist(lapply(selected, function(sel){
   unique(c(Links_sum[Links_sum$source == sel, "target"], 
           Links_sum[Links_sum$target == sel, "source"]))
-})))) > 1)
+}))) > 1)
 
 Nodes_sum$size <- 30
-Nodes_sum[connectingNodes, "name"] <- ""
+Nodes_sum[-c(connectingNodes, selected+1), "name"] <- ""
 
 fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
@@ -560,7 +562,7 @@ fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99, 
-                   arrows = T, zoom = T, charge = -300,
+                   arrows = T, zoom = T, charge = -10,
                    opacityNoHover = F, legend = F,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"), 
                    linkWidth = JS("function(d) { return Math.sqrt(d.value) * 2.5; }"), 
@@ -574,7 +576,7 @@ fN <- onRender(
       .attr("text-anchor", "middle")
       .attr("dx", "2.0em") // move label away from node
       .attr("dy", "-0.05em") // move label away from node
-      .style("transform", "rotate(-25deg) translate(0,0)");
+      .style("transform", "rotate(-0deg) translate(0,0)");
   }
   '
 )
@@ -585,17 +587,19 @@ webshot("figures/summary_sel2.html", file = "figures/summary_sel2.png", zoom = 3
         vwidth = 600,
         vheight = 600, delay = 1)
 
-connectingNodes <- table(c(Links_temp$source, Links_temp$target)) < 2
+connectedTemp <- which(unlist(lapply(Nodes_temp$name, 
+                                      function(x)strsplit(x, "_")[[1]][1])) %in% 
+                          Nodes_sum$name)
 
 Nodes_temp$size <- 30
-Nodes_temp[connectingNodes, "name"] <- ""
+Nodes_temp[-connectedTemp, "name"] <- ""
 fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
                    Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 15, bounded = T,
+                   fontSize = 17, bounded = T,
                    Source = "source", Target = "target",
                    Value = "value", NodeID = "name",
                    Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=F, charge = -90,
+                   arrows = T, zoom = T, legend=F, charge = -15,
                    opacityNoHover = TRUE,
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"), 
                    linkWidth = JS("function(d) { return Math.sqrt(d.value) * 2; }"), 
@@ -606,8 +610,10 @@ fN <- onRender(
   function(el,x) {
     d3.select(el)
       .selectAll(".node text")
-      .attr("text-anchor", "start")
-      .style("transform", "rotate(-25deg)");
+      .attr("text-anchor", "middle")
+      .attr("dx", "2.0em") // move label away from node
+      .attr("dy", "-0.35em") // move label away from node
+      .style("transform", "rotate(-5deg) translate(0,0)");
   }
   '
 )
@@ -615,8 +621,8 @@ fN
 
 saveWidget(fN, "figures/temp_sel2.html")
 webshot("figures/temp_sel2.html", file = "figures/temp_sel2.png", zoom = 3, 
-        vwidth = 600,
-        vheight = 600)
+        vwidth = 700,
+        vheight = 700)
 
 
 
