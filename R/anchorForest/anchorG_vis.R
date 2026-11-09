@@ -98,7 +98,7 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) +
   geom_point(aes(col = environment, shape = environment), size = 0.6) + 
   scale_shape_manual(values=0:7) +
   geom_vline(xintercept = 1) +
-  ylab("OOD MSE") + xlab(expression(gamma))
+  ylab("OOE MSE") + xlab(expression(gamma))
 
 ggAnchor
 ggsave("figures/AnchorCV.jpeg", width = 6, height = 3)
