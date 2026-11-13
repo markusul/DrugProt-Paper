@@ -1,6 +1,6 @@
 ## exportPvaluesWithEffects.R
 ## ===========================================================================
-## Like exportPvalues.R, but each row also carries the effect MAGNITUDE that
+## Exports the p-values. Each row also carries the effect MAGNITUDE that
 ## the Shiny app shows:
 ##   * drug effects  -> dEff  (average treatment effect)  from
 ##                      results/Coef/drugs/{drug}.RData      [protein x time]
@@ -23,7 +23,7 @@
 ##   eta is the bias factor of the predictor from R/pvalues/computeEta.R (Zhang and Zhang, 2014)
 ##
 ## Usage:
-##   Rscript R/exportPvaluesWithEffects.R [parquet_dir] [out_dir] [results_dir]
+##   Rscript R/postprocessing/exportPvaluesWithEffects.R [parquet_dir] [out_dir] [results_dir]
 ## ===========================================================================
 
 suppressPackageStartupMessages({
@@ -117,7 +117,7 @@ message(sprintf("  wrote %s (%.1f MB, %d rows)",
 rm(drug_pv, drug_df); gc()
 
 ## ===========================================================================
-## 2. PROTEIN NETWORK  + bhat magnitude   (the ~58M-row table)
+## 2. PROTEIN NETWORK  + bhat magnitude   (the ~52M-row table)
 ##    Stream from Parquet in target-chunks. For each target protein, load its
 ##    bhat files (one per transition time) and attach by source index.
 ##    NOTE: bhat in results/Coef/proteins/{P}_{hours}.RData is ALREADY the

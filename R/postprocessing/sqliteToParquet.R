@@ -2,13 +2,12 @@
 ## --------------------------------------------------------------------------
 ## Convert each table of data/drugprot.sqlite into a compressed Parquet file
 ## under data/parquet/, then report sizes so you can compare against the
-## 5.4 GB .sqlite. One Parquet file per table (DuckDB queries them together).
+## .sqlite. One Parquet file per table (DuckDB queries them together).
 ##
 ## Memory note: every table is read fully into R before writing. drug_pvalue
-## (~3.9M rows with direct and total effects) and protein_pvalue (~58M rows on
-## the real data) are the large
-## ones; ~58M rows x 4 cols of doubles is ~1.8 GB in R briefly. If that is too
-## much, see the chunked alternative for protein_pvalue at the bottom.
+## (~3.7M rows with direct and total effects) and protein_pvalue (~52M rows)
+## are the large ones. ~52M rows x 4 cols of doubles is ~1.7 GB in R briefly.
+## If that is too much, see the chunked alternative for protein_pvalue at the bottom.
 ## --------------------------------------------------------------------------
 
 library(DBI)

@@ -481,7 +481,7 @@ writeLines(P_Results, fileConn)
 close(fileConn)
 
 
-##### Visualize protein network only with the top three proteins #####
+##### Protein network of the selected proteins, Figure 3 (summary_sel2.png, temp_sel2.png) #####
 P_selection <- which(prot_names_short %in% most_imp)
 stopifnot(all(unique(most_imp) %in% prot_names_short))
 
