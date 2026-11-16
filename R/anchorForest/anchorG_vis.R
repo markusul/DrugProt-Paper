@@ -221,6 +221,28 @@ times_imp <- sapply(strsplit(names(most_imp), '_'), function(x) x[length(x)])
 most_imp <- imp_to_shortnames(most_imp)
 most_imp_h <- paste(most_imp, paste0(times_imp, 'h'))
 
+# regularization path with the selected proteins labeled
+sel <- make.names(names(sort(var_importance[var_importance > 2], decreasing = T)))  # same order as most_imp_h
+stopifnot(all(sel %in% gg_path$data$covariate))
+sel_col <- setNames(c("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948")[seq_along(sel)], sel)
+path_sel <- gg_path$data[gg_path$data$covariate %in% sel, ]
+path_lab <- path_sel[path_sel$cp == min(path_sel$cp), ]
+path_lab$label <- most_imp_h[match(path_lab$covariate, sel)]
+
+gg_path_lab <- gg_path + theme_bw() +
+  geom_line(data = path_sel, linewidth = 0.8) +
+  ggrepel::geom_text_repel(data = path_lab, aes(label = label), color = "black", size = 8 / .pt,
+                           direction = "y", hjust = 1, nudge_x = -0.03, xlim = c(NA, -0.02),
+                           segment.size = 0.3, min.segment.length = 0, box.padding = 0.15, seed = 1) +
+  scale_color_manual(values = sel_col, na.value = "grey85") +
+  scale_x_continuous(breaks = seq(0, 1, 0.25), expand = expansion(mult = c(0.18, 0.02))) +
+  labs(x = "cp", y = "Variable importance") +
+  theme(legend.position = "none")
+gg_path_lab
+
+ggsave("figures/regPath.jpeg", gg_path_lab, width = 6, height = 3)
+
+
 times_imp <- table(times_imp)
 
 A_Results <- c(A_Results, paste0("Timepoints of most important proteins: ", 
