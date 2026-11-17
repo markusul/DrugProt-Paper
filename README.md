@@ -124,14 +124,18 @@ The numbers reported in the paper are written to three text files.
 
 | Figure | File | Written by |
 | :--- | :--- | :--- |
-| 2 | `figures/ht_sel.png`<br>`figures/ht_zoom_sel.png` | [`pValVis.R`](R/pvalues/pValVis.R) |
-| 3 | `figures/summary_sel2.png`<br>`figures/temp_sel2.png` | [`pValVis.R`](R/pvalues/pValVis.R) |
-| 4 | `figures/PvalAnalysis.png` | [`pValVis.R`](R/pvalues/pValVis.R) |
-| 6 | `figures/AnchorCV.jpeg` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
-| 7 | `figures/AnchorDep.jpeg` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
-| 8 | `figures/regPath.jpeg` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
+| 1 | `figures/Fig1.png`<br>`figures/Fig1.tif` | [`schematicFigures.R`](R/postprocessing/schematicFigures.R) |
+| 2 | `figures/Fig2.png`<br>`figures/Fig2.tif` | [`pValVis.R`](R/pvalues/pValVis.R) |
+| 3 | `figures/Fig3.png`<br>`figures/Fig3.tif` | [`pValVis.R`](R/pvalues/pValVis.R) |
+| 4 | `figures/Fig4.png`<br>`figures/Fig4.tif` | [`pValVis.R`](R/pvalues/pValVis.R) |
+| 5 | `figures/Fig5.png`<br>`figures/Fig5.tif` | [`schematicFigures.R`](R/postprocessing/schematicFigures.R) |
+| 6 | `figures/Fig6.png`<br>`figures/Fig6.tif` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
+| 7 | `figures/Fig7.png`<br>`figures/Fig7.tif` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
+| 8 | `figures/Fig8.png`<br>`figures/Fig8.tif` | [`anchorG_vis.R`](R/anchorForest/anchorG_vis.R) |
 
-Figures 1 and 5 are schematic drawings and are not produced by the code.
+Each figure is written twice by `save_fig()` in [`figureUtils.R`](R/figureUtils.R), as PNG for the manuscript and as TIFF in the format that PLOS requires.
+
+Figures 1 and 5 are schematic drawings. Figure 1 is drawn by the script and shows three screenshots of the application from `schematics/`. Figure 5 is the causal graph.
 
 ## More details on the different scripts
 

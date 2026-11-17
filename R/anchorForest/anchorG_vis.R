@@ -3,6 +3,7 @@ library(ggplot2)
 library(gridExtra)
 theme_set(theme_bw(base_size = 14))
 library(SDModels)
+source("R/figureUtils.R")
 set.seed(42)
 
 # load and preprocess data
@@ -92,7 +93,7 @@ A_Results <- c(A_Results, paste0("Relative improvement over random forest (gamma
 
 
 ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) + 
-  theme_bw() + 
+  theme_fig + 
   geom_smooth(xseq = xseq, se = FALSE, linewidth = 0.4, 
               aes(linetype = environment, col = environment)) + 
   geom_point(aes(col = environment, shape = environment), size = 0.6) + 
@@ -101,7 +102,7 @@ ggAnchor <- ggplot(dfPerf_g, aes(x = gamma, y = mse, group = environment)) +
   ylab("OOE MSE") + xlab(expression(gamma))
 
 ggAnchor
-ggsave("figures/AnchorCV.jpeg", width = 6, height = 3)
+save_fig(ggAnchor, 6, width = 6, height = 3)
 
 # compute performance of mean prediction per environment
 mean_perf <- sapply(unique(envs), function(env) mean((Y[envs == env] - mean(Y[envs != env]))**2))
@@ -155,9 +156,6 @@ plot(path, plotly = TRUE, imp_s)
 
 plotOOB(path)
 
-ggsave("figures/regPath.jpeg", 
-       gg_path + theme_bw() + theme(legend.position = "none"), 
-       width = 6, height = 3)
 
 # selected proteins at cp > 0.5
 cp <- which(path$cp == min(path$cp[path$cp > 0.5]))
@@ -229,9 +227,9 @@ path_sel <- gg_path$data[gg_path$data$covariate %in% sel, ]
 path_lab <- path_sel[path_sel$cp == min(path_sel$cp), ]
 path_lab$label <- most_imp_h[match(path_lab$covariate, sel)]
 
-gg_path_lab <- gg_path + theme_bw() +
+gg_path_lab <- gg_path + theme_fig +
   geom_line(data = path_sel, linewidth = 0.8) +
-  ggrepel::geom_text_repel(data = path_lab, aes(label = label), color = "black", size = 8 / .pt,
+  ggrepel::geom_text_repel(data = path_lab, aes(label = label), color = "black", size = 8 / .pt, family = fig_family,
                            direction = "y", hjust = 1, nudge_x = -0.03, xlim = c(NA, -0.02),
                            segment.size = 0.3, min.segment.length = 0, box.padding = 0.15, seed = 1) +
   scale_color_manual(values = sel_col, na.value = "grey85") +
@@ -240,7 +238,7 @@ gg_path_lab <- gg_path + theme_bw() +
   theme(legend.position = "none")
 gg_path_lab
 
-ggsave("figures/regPath.jpeg", gg_path_lab, width = 6, height = 3)
+save_fig(gg_path_lab, 8, width = 6, height = 3)
 
 
 times_imp <- table(times_imp)
@@ -293,14 +291,15 @@ A_Results <- c(A_Results, "Partial dependence of the two most important proteins
 # coord_cartesian zooms without dropping points, unlike xlim and ylim
 y_range <- range(sapply(deps, function(dep) range(dep$preds_mean)))
 pd_plot <- function(dep) {
-  plot(dep, n_examples = 0) + xlab(dep_lab(dep)) + theme_bw() + ggtitle("") + ylab("") +
+  plot(dep, n_examples = 0) + xlab(dep_lab(dep)) + theme_fig + ggtitle("") + ylab("") +
     coord_cartesian(xlim = quantile(dep$xj, c(0.01, 0.99)), ylim = y_range)
 }
 gg1 <- pd_plot(deps[[1]]) + ylab(expression(widehat(IC50)))
 gg2 <- pd_plot(deps[[2]])
 
-ggdep <- grid.arrange(gg1, gg2, nrow = 1, bottom = "Partial dependence on differential log-protein expression")
-ggsave("figures/AnchorDep.jpeg", ggdep, width = 7, height = 3)
+save_fig(list(gg1, gg2), 7, width = 7, height = 3, nrow = 1,
+         bottom = grid::textGrob("Partial dependence on differential log-protein expression",
+                                 gp = grid::gpar(fontfamily = fig_family, fontsize = 10)))
 
 # file to save results to
 fileConn <- file("results/A_Results.txt")
