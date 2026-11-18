@@ -2,6 +2,10 @@
 
 This repository contains all the code used for the paper "[*Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks*](https://doi.org/10.64898/2026.06.17.732914)" by Markus Ulmer, Rui Sun, Liujia Qian, Ruedi Aebersold, Tiannan Guo, and Peter Bühlmann (2026).
 
+![Two drugs act on a cell. Three rings show the protein expression at 6, 24 and 48 hours with the significant dependencies between them, and a panel shows the drug effects on one protein.](www/cover.jpg)
+
+*The image is drawn from the estimated dependencies and drug effects by [`coverImage.py`](Python/coverImage.py), see [below](#where-the-numbers-and-figures-of-the-paper-come-from).*
+
 All the statistical analysis was run on [*Euler*](https://scicomp.ethz.ch/wiki/Euler) using the batch jobs in the [`slurm`](slurm) folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and [`sessionInfo.txt`](sessionInfo.txt) for details about the libraries used. The figures, the Parquet store, the CSV export and the numbers of S1 Appendix, Section C were produced on a local machine, see [`sessionInfo_local.txt`](sessionInfo_local.txt).
 
 ## Input data
