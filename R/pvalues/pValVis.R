@@ -1,9 +1,4 @@
 # load libraries
-library(plotly)
-library(networkD3)
-library(webshot2)
-library(htmlwidgets)
-library(HiveR)
 library(grid)
 source("R/figureUtils.R")
 
@@ -267,77 +262,6 @@ SelToSel <- nrow(unique(Links_sum[nonself & Links_sum$source %in% sel0 & Links_s
 P_Results <- c(P_Results, paste0("Average degree of the SELECTED summary graph: ",
                                  (nLinksSel + SelToSel) / nSelection))
 
-#selected nodes + connected nodes
-rel.Nodes <- sort(unique(c(P_selection-1, unlist(Links_sum[, c('source', 'target')]))))
-Nodes_sum <- data.frame(name = prot_names_short[rel.Nodes+1], group = "Connected", size = 1)
-Nodes_sum$group[rel.Nodes %in% (P_selection-1)] <- "Selected"
-
-#reorganize link index
-for(i in 1:length(rel.Nodes)){
-  Links_sum[, c('source', 'target')][Links_sum[, c('source', 'target')] == rel.Nodes[i]] <- i - 1
-}
-
-# Prepare Temporal Graph
-expTimes <- c(6, 24, 48)
-rel6 <- sort(unique(c(P_selection, Links_all[[1]][, "source"])))
-rel24 <- sort(unique(c(P_selection, Links_all[[1]][, "target"], Links_all[[2]][, "source"])))
-rel48 <- sort(unique(c(P_selection, Links_all[[2]][, "target"])))
-rel <- list(rel6, rel24, rel48)
-lenRel <- c(0, length(rel6), length(rel24), length(rel48))
-
-nodenames <- c(paste(prot_names_short[rel6], expTimes[1], sep = '_'), 
-               paste(prot_names_short[rel24], expTimes[2], sep = '_'), 
-               paste(prot_names_short[rel48], expTimes[3], sep = '_'))
-nodegroups <- rep(paste0(expTimes, "h"), times = c(length(rel6), length(rel24), length(rel48)))
-
-# reorganize link index to match new nodenames
-Links_temp <- lapply(1:2, function(t){
-  links <- Links_all[[t]]
-  for(i in 1:length(rel[[t]])){
-    links[links[, 1] == rel[[t]][i], 1] <- i - 1 + sum(lenRel[1:t])
-  }
-  for(i in 1:length(rel[[t+1]])){
-    links[links[, 2] == rel[[t+1]][i], 2] <- i - 1 + sum(lenRel[1:(t+1)])
-  }
-  links
-})
-Links_temp <- do.call(rbind, Links_temp)
-Links_temp$value <- 1
-Nodes_temp <- data.frame(name = nodenames, group = nodegroups, size = 0.1)
-Nodes_temp$radius <- as.numeric(c(rel6, rel24, rel48))
-
-# Prepare for HivePlot
-edges <- Links_temp
-edges[, 1:2] <- edges[, 1:2] + 1
-
-names(edges) <- c("id1", "id2", "weight")
-# color
-row.names(edges) <- NULL
-edges$id1 <- as.integer(edges$id1)
-edges$id2 <- as.integer(edges$id2)
-edges$color <- "black"
-edges$weight <- 0.1
-
-nodes <- Nodes_temp
-names(nodes) <- c("lab", "axis", "size", "radius")
-
-nodes$axis[nodes$axis == "6h"] <- 2
-nodes$axis[nodes$axis == "24h"] <- 1
-nodes$axis[nodes$axis == "48h"] <- 3
-nodes$axis <- as.integer(nodes$axis)
-nodes$id <- 1:nrow(nodes)
-nodes$radius <- nodes$radius * 3
-nodes$color <- "grey"
-nodes$color[unlist(rel) %in% P_selection] <- "black"
-
-HEC <- list()
-HEC$nodes <- nodes
-HEC$edges <- edges
-HEC$type <- "2D"
-HEC$desc <- "HairEyeColor data set"
-HEC$axis.cols <- c("grey", "grey")
-class(HEC) <- "HivePlotData" 
-
 # prepare p value of drug effects matrix for heatmap
 pMat <- matrix(NA, nrow = nDrugs, ncol = nDrugs)
 rownames(pMat) <- colnames(pMat) <- names(pvec)[1:nDrugs]
@@ -389,52 +313,6 @@ ht_b <- ht_plot(droplevels(ht_df[ht_df$x %in% in_pair & ht_df$y %in% in_pair, ])
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 
 save_fig(list(ht_a, ht_b), 2, width = 7.5, height = 3.8, widths = c(0.42, 0.58), tags = c("(a)", "(b)"))
-
-Nodes_sum$size <- 10
-fN <- forceNetwork(Links = Links_sum, Nodes = Nodes_sum,
-                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 0.1, bounded = T,
-                   Source = "source", Target = "target",
-                   Value = "value", NodeID = "name",
-                   Group = "group", opacity = 0.99, 
-                   arrows = T, zoom = T, charge = -20,
-                   opacityNoHover = TRUE, legend = F,
-                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
-fN
-
-saveWidget(fN, "figures/summary_sel.html")
-webshot("figures/summary_sel.html", file = "figures/summary_sel.png", zoom = 3, 
-        vwidth = 700,
-        vheight = 700)
-
-Nodes_temp$size <- 10
-fN <- forceNetwork(Links = Links_temp, Nodes = Nodes_temp,
-                   Nodesize = "size", radiusCalculation = JS("Math.sqrt(d.nodesize)"),
-                   fontSize = 0.1, bounded = T,
-                   Source = "source", Target = "target",
-                   Value = "value", NodeID = "name",
-                   Group = "group", opacity = 0.99,# Nodesize = 3,
-                   arrows = T, zoom = T, legend=F, charge = -10,
-                   opacityNoHover = TRUE,
-                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
-fN
-
-saveWidget(fN, "figures/temp_sel.html")
-webshot("figures/temp_sel.html", file = "figures/temp_sel.png", zoom  = 3,
-        vwidth = 700,
-        vheight = 700)
-
-
-plotHive(HEC, ch = 0.001, bkgnd = "white", 
-         axLabs = c("24h", "6h", "48h"), 
-         axLab.gpar = gpar(col = "black", fontsize = 24))
-
-png(filename="figures/hive_sel.png", width = 1000, height = 700)
-plotHive(HEC, ch = 0.001, bkgnd = "white", 
-         axLabs = c("24h", "6h", "48h"), 
-         axLab.gpar = gpar(col = "black", fontsize = 24))
-dev.off()
-
 
 # file to save results to
 fileConn <- file("results/P_Results.txt")
