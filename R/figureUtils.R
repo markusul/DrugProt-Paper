@@ -1,6 +1,7 @@
 # Shared settings for the figures of the paper.
 # save_fig() writes each figure twice, as figures/Fig<n>.png for the manuscript
 # and as figures/Fig<n>.tif for PLOS.
+# If n is a name instead of a number, the files are figures/<n>.png and figures/<n>.tif.
 # PLOS asks for TIFF with LZW compression, RGB without alpha channel, 300 to 600 dpi,
 # a width of 2.63 to 7.5 in, a height of at most 8.75 in, and Arial, Times or Symbol at 8 to 12 pt.
 
@@ -24,6 +25,7 @@ save_fig <- function(plots, n, width, height, dpi = 600, tags = NULL, ...) {
   stopifnot(width >= 2.63, width <= 7.5, height <= 8.75, dpi >= 300, dpi <= 600)
   if (inherits(plots, "ggplot")) plots <- list(plots)
   dir.create("figures", showWarnings = FALSE)
+  file <- file.path("figures", if (is.numeric(n)) sprintf("Fig%d", n) else n)
   draw <- function() {
     if (is.null(tags)) {
       fig <- gridExtra::arrangeGrob(grobs = plots, ...)
@@ -35,11 +37,11 @@ save_fig <- function(plots, n, width, height, dpi = 600, tags = NULL, ...) {
     }
     grid::grid.draw(fig)
   }
-  ragg::agg_png(sprintf("figures/Fig%d.png", n), width = width, height = height,
+  ragg::agg_png(paste0(file, ".png"), width = width, height = height,
                 units = "in", res = dpi, background = "white")
   draw()
   dev.off()
-  ragg::agg_tiff(sprintf("figures/Fig%d.tif", n), width = width, height = height,
+  ragg::agg_tiff(paste0(file, ".tif"), width = width, height = height,
                  units = "in", res = dpi, compression = "lzw", background = "white")
   draw()
   dev.off()
