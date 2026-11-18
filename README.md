@@ -2,7 +2,7 @@
 
 This repository contains all the code used for the paper "[*Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks*](https://doi.org/10.64898/2026.06.17.732914)" by Markus Ulmer, Rui Sun, Liujia Qian, Ruedi Aebersold, Tiannan Guo, and Peter Bühlmann (2026).
 
-All the statistical analysis was run on [*Euler*](https://scicomp.ethz.ch/wiki/Euler) using the batch jobs in the [`slurm`](slurm) folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and [`sessionInfo.txt`](sessionInfo.txt) for details about the libraries used.
+All the statistical analysis was run on [*Euler*](https://scicomp.ethz.ch/wiki/Euler) using the batch jobs in the [`slurm`](slurm) folder. See [*here*](https://scicomp.ethz.ch/wiki/Euler_applications_and_libraries_ubuntu) and [`sessionInfo.txt`](sessionInfo.txt) for details about the libraries used. The figures, the Parquet store, the CSV export and the numbers of S1 Appendix, Section C were produced on a local machine, see [`sessionInfo_local.txt`](sessionInfo_local.txt).
 
 ## Input data
 
@@ -136,6 +136,20 @@ The numbers reported in the paper are written to three text files.
 Each figure is written twice by `save_fig()` in [`figureUtils.R`](R/figureUtils.R), as PNG for the manuscript and as TIFF in the format that PLOS requires.
 
 Figures 1 and 5 are schematic drawings. Figure 1 is drawn by the script and shows three screenshots of the application from `schematics/`. Figure 5 is the causal graph.
+
+Three more images are not figures of the paper. They are made for the striking image of the journal and for presentations.
+
+| Image | File | Written by |
+| :--- | :--- | :--- |
+| Striking image 1 | `figures/StrikingImage1.png`<br>`figures/StrikingImage1.tif` | [`schematicFigures.R`](R/postprocessing/schematicFigures.R) |
+| Striking image 2 | `figures/StrikingImage2.png`<br>`figures/StrikingImage2.tif` | [`schematicFigures.R`](R/postprocessing/schematicFigures.R) |
+| Cover image | `figures/CoverImage.png`<br>`figures/CoverImage.tif` | [`coverImage.py`](Python/coverImage.py) |
+
+The cover image shows the significant dependencies among the 300 proteins with the most dependencies and the drug effects on one selected protein. The script reads the Parquet store, so it runs after `sqliteToParquet.R`. It needs Python 3 with `numpy`, `matplotlib`, `opencv-python-headless`, `pillow` and `duckdb`.
+
+```bash
+python3 Python/coverImage.py data/parquet figures/CoverImage --protein SPRR3
+```
 
 ## More details on the different scripts
 
