@@ -1,4 +1,4 @@
-# Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks <a href="https://ulme.shinyapps.io/DrugProt/"><img src="www/drugprot-mark.png" align="right" height="120" alt="DrugProt website" /></a>
+# Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks <a href="https://markus-ulmer.ch/drugprot/"><img src="www/drugprot-mark.png" align="right" height="120" alt="DrugProt website" /></a>
 
 This repository contains all the code used for the paper "[*Drug-Prot: A query system for statistical inference of drug effects and interactions in dynamic proteomic networks*](https://doi.org/10.64898/2026.06.17.732914)" by Markus Ulmer, Rui Sun, Liujia Qian, Ruedi Aebersold, Tiannan Guo, and Peter Bühlmann (2026).
 
