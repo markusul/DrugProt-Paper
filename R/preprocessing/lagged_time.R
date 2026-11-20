@@ -3,6 +3,7 @@ set.seed(22)
 
 load("data/prepData.RData")
 load("data/protNames.RData")
+source("R/preprocessing/proteinNames.R")   # short_names()
 
 # remove proteins with less than 11 unique values
 abundand <- apply(data[, prot_names], 2, function(x) length(unique(x)) > 10)
@@ -11,17 +12,6 @@ prot_names <- prot_names[abundand]
 # sort drugs by information
 drugOrder <- names(sort(colSums(data[, pert_names] != 0), decreasing = T))
 drugOrder <- paste0('`', drugOrder, '`')
-
-# collect protein names in short
-prot_names_short <- sapply(prot_names, function(p) {
-  parts     <- strsplit(p, '[.]')[[1]]
-  human_idx <- grep("_HUMAN", parts)
-  n         <- length(human_idx)
-  # gene symbols are the n fields immediately following the LAST _HUMAN field
-  last_human <- max(human_idx)
-  genes      <- parts[(last_human + 1):(last_human + n)]
-  paste0(genes, collapse = "/")
-})
 
 expTimes <- sort(unique(data$pert_time))[-1]
 nTreatment <- length(unique(data[, "pertLabel"]))-2
@@ -133,7 +123,7 @@ keep <- varies(diffP(6)) & varies(diffP(24)) & varies(diffP(48)) &
 cat("proteins without variation removed:", sum(!keep), "of", length(keep), "\n")
 
 prot_names <- prot_names[keep]
-prot_names_short <- prot_names_short[keep]
+prot_names_short <- short_names(prot_names)   # gene symbols of the proteins that are kept
 aggData <- lapply(aggData, function(a) a[, keep])
 
 # save order and short names

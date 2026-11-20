@@ -169,6 +169,8 @@ python3 Python/coverImage.py data/parquet figures/CoverImage --protein SPRR3
 | [`R/preprocessing/data_preparation.R`](R/preprocessing/data_preparation.R) | `data/prepData.RData` | `data/aggData.RData`<br>`data/protNames.RData` |
 | [`R/preprocessing/lagged_time.R`](R/preprocessing/lagged_time.R) | `data/prepData.RData`<br>`data/protNames.RData`<br>`data/na_count.RData` | `data/order.RData`<br>`data/laggedData.RData` |
 
+`lagged_time.R` sources the helper [`R/preprocessing/proteinNames.R`](R/preprocessing/proteinNames.R), which derives the short protein names from the identifiers. A protein is named by its gene symbol, and the symbols of a protein group are joined with a slash. A protein without a gene symbol is named by its UniProt accession, and proteins that share a gene symbol carry the accession in addition, such as `TMPO (P42166)`.
+
 ### 2. P-value Estimation
 
 The scripts that build a design matrix source the helper [`R/pvalues/drugDesign.R`](R/pvalues/drugDesign.R).
