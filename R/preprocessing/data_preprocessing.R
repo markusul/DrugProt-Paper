@@ -27,12 +27,13 @@ print("start data preprocessing")
 # See the Drug-Prot data deposit for their description.
 #
 # Two points about the sample selection. The released dataset contains more
-# samples than are used here, among them 840 selected, of which 829 carry annotation, which are those meeting complete biological
-# triplicate and full factorial design criteria. Since the baseline is a
-# per-cell-line median over the controls, the selection determines every
-# differential expression. And of the 15002 selected samples, 158 are
-# technical replicates that appear in the intensity matrix but not in the
-# sample annotation, so 14844 enter the analysis.
+# samples than are used here. Of its 1117 untreated controls, 840 are selected,
+# those that meet the criteria of complete biological triplicates and a full
+# factorial design. Since the baseline is a per-cell-line median over the
+# controls, the selection determines every differential expression. And of
+# the 15002 selected samples, 158 are technical replicates that appear in the
+# intensity matrix but not in the sample annotation, so 14844 enter the
+# analysis. Eleven of the 158 are untreated controls, so 829 controls remain.
 # ---------------------------------------------------------------------------
 
 library(dplyr)
