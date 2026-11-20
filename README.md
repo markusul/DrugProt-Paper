@@ -90,7 +90,7 @@ The **Anchor Forest** analysis depends only on the preprocessing and can run alo
 
 > *Note: `anchorG_vis.R` decides which pass to run by checking for `results/anchor_opt/var_importance.RData`. Start from an empty `results/anchor_opt/` so that a file from an earlier run does not skip the first pass.*
 
-> *Note: The grid `gamma_seq` in `anchorG_CV.R` is on the square-root scale. The scripts square it, so the grid value 3.8 is $\gamma = 14.44$ in the paper. `anchorG_vis.R` keeps only $\gamma \geq 1$, and the trees are not pruned.*
+> *Note: The grid `gamma_seq` in `anchorG_CV.R` is on the square-root scale. The scripts square it, so the grid value 3.8 is γ = 14.44 in the paper. `anchorG_vis.R` keeps only γ ≥ 1, and the trees are not pruned.*
 
 All random steps are seeded. The imputation of missing values is deterministic, and each protein in `fit.slurm` uses its own seed, so the results do not depend on scheduling or the number of cores.
 
@@ -213,7 +213,7 @@ graph TD
     classDef file fill:#fff3e0,stroke:#f57c00,stroke-width:1px
     classDef output fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
 
-    subgraph Input ["**Public input**"]
+    subgraph Input ["`**Public input**`"]
         I1[data/01_sample_info.xlsx]:::file
         I2[data/02_protein_intensity_matrix.xlsx]:::file
         I3[data/protein_names.csv]:::file
@@ -222,7 +222,7 @@ graph TD
         I6["data/Original screen_All tissues_fitted data.csv"]:::file
     end
 
-    subgraph Prep ["**Data Processing**"]
+    subgraph Prep ["`**Data Processing**`"]
         S0(R/preprocessing/combinationIC50.R):::script
         S1(R/preprocessing/data_preprocessing.R):::script
         S2(R/preprocessing/data_preparation.R):::script
@@ -242,7 +242,7 @@ graph TD
         S3 --> D5[data/order.RData]:::file
     end
 
-    subgraph PVal ["**P-value Estimation**"]
+    subgraph PVal ["`**P-value Estimation**`"]
         S4(R/pvalues/getZ.R):::script
         S5(R/pvalues/drugInteraction.R):::script
         S6(R/pvalues/pValOrganization.R):::script
@@ -271,7 +271,7 @@ graph TD
         S7 --> O1[P-value Plots, P_Results.txt]:::output
     end
 
-    subgraph Anchor ["**Anchor Forest**"]
+    subgraph Anchor ["`**Anchor Forest**`"]
         S8(R/anchorForest/anchorG_CV.R):::script
         S9(R/anchorForest/anchorG_opt.R):::script
         S10(R/anchorForest/anchorG_opt_res.R):::script
@@ -291,7 +291,7 @@ graph TD
         S11 --> O2[Anchor Forest Plots, A_Results.txt]:::output
     end
 
-    subgraph Database ["**Database & Export**"]
+    subgraph Database ["`**Database & Export**`"]
         S13(R/postprocessing/buildDatabase.R):::script
         S14(R/postprocessing/sqliteToParquet.R):::script
         S15(R/postprocessing/exportPvaluesWithEffects.R):::script
